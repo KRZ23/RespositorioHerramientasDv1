@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import threading
 import time
+from sign_classifier import SignClassifier
 
 class HandDetector:
     """
@@ -27,12 +28,18 @@ class HandDetector:
         self.detection_thread = None
         self.window_created = False
         
+        # Inicializar clasificador de señas
+        self.sign_classifier = SignClassifier(confidence_threshold=0.6)
+        self.translation_enabled = True
+        
         # Callbacks para comunicación con la interfaz
         self.on_hand_detected = None
         self.on_status_update = None
         self.on_error = None
+        self.on_sign_detected = None  # Nuevo callback para señas traducidas
+        self.on_training_mode = False  # Modo de entrenamiento
         
-    def set_callbacks(self, on_hand_detected=None, on_status_update=None, on_error=None):
+    def set_callbacks(self, on_hand_detected=None, on_status_update=None, on_error=None, on_sign_detected=None):
         """
         Establece callbacks para comunicación con la interfaz
         
@@ -40,10 +47,12 @@ class HandDetector:
             on_hand_detected: Función que se llama cuando se detectan manos (hand_count)
             on_status_update: Función que se llama para actualizar estado (message)
             on_error: Función que se llama en caso de error (error_message)
+            on_sign_detected: Función que se llama cuando se detecta una seña (sign_result)
         """
         self.on_hand_detected = on_hand_detected
         self.on_status_update = on_status_update
         self.on_error = on_error
+        self.on_sign_detected = on_sign_detected
         
     def start_detection(self):
         """
@@ -106,6 +115,28 @@ class HandDetector:
     def is_running(self):
         """Verifica si la detección está activa"""
         return self.is_detecting
+    
+    def toggle_translation(self):
+        """Activa/desactiva la traducción de señas"""
+        self.translation_enabled = not self.translation_enabled
+        status = "activada" if self.translation_enabled else "desactivada"
+        if self.on_status_update:
+            self.on_status_update(f"Traducción {status}")
+        return self.translation_enabled
+    
+    def is_translation_enabled(self):
+        """Verifica si la traducción está activada"""
+        return self.translation_enabled
+    
+    def add_training_sample(self, sign_name, description=""):
+        """Añade muestra de entrenamiento del frame actual"""
+        # Esta función será llamada desde la interfaz cuando se quiera entrenar
+        # El entrenamiento se hará con el próximo frame detectado
+        self.training_sign_name = sign_name
+        self.training_description = description
+        self.on_training_mode = True
+        if self.on_status_update:
+            self.on_status_update(f"Modo entrenamiento: {sign_name}")
         
     def _detection_loop(self):
         """Bucle principal de detección (ejecutado en hilo separado)"""
@@ -129,6 +160,34 @@ class HandDetector:
                     hand_count = current_hand_count
                     if self.on_hand_detected:
                         self.on_hand_detected(hand_count)
+                
+                # Procesar traducción de señas si está habilitada
+                if self.translation_enabled and results.multi_hand_landmarks:
+                    # Tomar la primera mano detectada para clasificación
+                    first_hand = results.multi_hand_landmarks[0]
+                    
+                    # Modo entrenamiento
+                    if self.on_training_mode and hasattr(self, 'training_sign_name'):
+                        success = self.sign_classifier.add_training_sample(
+                            self.training_sign_name, first_hand, 
+                            getattr(self, 'training_description', '')
+                        )
+                        if success and self.on_status_update:
+                            self.on_status_update(f"Muestra de {self.training_sign_name} guardada ✓")
+                        self.on_training_mode = False
+                        delattr(self, 'training_sign_name')
+                    
+                    # Clasificación normal
+                    else:
+                        sign_result = self.sign_classifier.classify_hand_landmarks(first_hand)
+                        
+                        # Notificar si se detectó una seña con suficiente confianza
+                        if (sign_result and sign_result['sign'] and 
+                            sign_result['confidence'] > 0.5 and 
+                            sign_result.get('stability') == 'estable'):
+                            
+                            if self.on_sign_detected:
+                                self.on_sign_detected(sign_result)
                 
                 # Dibujar landmarks si se detectan manos
                 if results.multi_hand_landmarks:
