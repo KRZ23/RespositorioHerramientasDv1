@@ -6,9 +6,10 @@ from hand_detector import HandDetector
 class HandDetectionApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Detección de Manos - Interfaz Moderna")
-        self.root.geometry("800x600")
-        self.root.configure(bg='#1e1e1e')
+        self.root.title("🤟 Traductor de Señas Peruano - v2.0")
+        self.root.geometry("900x700")
+        self.root.configure(bg='#0f0f23')  # Azul oscuro moderno
+        self.root.minsize(800, 600)
         
         # Inicializar detector de manos
         self.hand_detector = HandDetector()
@@ -23,6 +24,25 @@ class HandDetectionApp:
         self.current_sign = "Sin seña detectada"
         self.sign_confidence = 0.0
         
+        # Variables de estadísticas
+        self.detection_count = 0
+        self.successful_translations = 0
+        self.session_start_time = time.time()
+        
+        # Paleta de colores moderna
+        self.colors = {
+            'primary': '#6366f1',     # Índigo vibrante
+            'secondary': '#8b5cf6',   # Violeta
+            'success': '#10b981',     # Verde esmeralda
+            'warning': '#f59e0b',     # Ámbar
+            'error': '#ef4444',       # Rojo
+            'text_primary': '#f8fafc', # Blanco suave
+            'text_secondary': '#cbd5e1', # Gris claro
+            'background': '#0f0f23',   # Azul oscuro
+            'surface': '#1e1b4b',     # Azul medio
+            'accent': '#06b6d4'       # Cian
+        }
+        
         # Crear interfaz
         self.create_interface()
         
@@ -32,20 +52,84 @@ class HandDetectionApp:
         style = ttk.Style()
         style.theme_use('clam')
         
-        # Configurar colores oscuros
-        style.configure('TFrame', background='#1e1e1e')
-        style.configure('TLabel', background='#1e1e1e', foreground='#ffffff', font=('Arial', 12))
-        style.configure('TButton', background='#404040', foreground='#ffffff', font=('Arial', 10, 'bold'))
-        style.configure('TText', background='#2d2d2d', foreground='#ffffff', font=('Consolas', 10))
+        # Configurar estilos modernos
+        style.configure('TFrame', background=self.colors['background'])
+        style.configure('TLabel', 
+                       background=self.colors['background'], 
+                       foreground=self.colors['text_primary'], 
+                       font=('Inter', 11))
+        style.configure('Title.TLabel', 
+                       background=self.colors['background'], 
+                       foreground=self.colors['primary'], 
+                       font=('Inter', 20, 'bold'))
+        style.configure('Subtitle.TLabel', 
+                       background=self.colors['background'], 
+                       foreground=self.colors['text_secondary'], 
+                       font=('Inter', 10))
+        style.configure('TButton', 
+                       background=self.colors['primary'], 
+                       foreground=self.colors['text_primary'], 
+                       font=('Inter', 10, 'bold'),
+                       focuscolor='none')
+        style.configure('Success.TButton', 
+                       background=self.colors['success'])
+        style.configure('Warning.TButton', 
+                       background=self.colors['warning'])
+        style.configure('TEntry', 
+                       background=self.colors['surface'], 
+                       foreground=self.colors['text_primary'],
+                       borderwidth=0,
+                       font=('Inter', 10))
+        style.configure('TLabelFrame', 
+                       background=self.colors['background'],
+                       foreground=self.colors['text_secondary'],
+                       borderwidth=1)
+        style.configure('TLabelFrame.Label', 
+                       background=self.colors['background'],
+                       foreground=self.colors['accent'],
+                       font=('Inter', 10, 'bold'))
         
         # Frame principal
-        main_frame = ttk.Frame(self.root, padding="20")
+        main_frame = ttk.Frame(self.root, padding="25")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Título
-        title_label = ttk.Label(main_frame, text="🤖 Traductor de Señas Peruano", 
-                               font=('Arial', 16, 'bold'))
-        title_label.pack(pady=(0, 20))
+        # Header con título y subtítulo
+        header_frame = ttk.Frame(main_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 25))
+        
+        # Título principal
+        title_label = ttk.Label(header_frame, text="� Traductor de Señas Peruano", 
+                               style='Title.TLabel')
+        title_label.pack()
+        
+        # Subtítulo
+        subtitle_label = ttk.Label(header_frame, 
+                                 text="Inteligencia Artificial para Lenguaje de Señas • Versión 2.0", 
+                                 style='Subtitle.TLabel')
+        subtitle_label.pack(pady=(5, 0))
+        
+        # Panel de estadísticas (arriba)
+        stats_frame = ttk.LabelFrame(main_frame, text="📊 Estadísticas de Sesión", padding="15")
+        stats_frame.pack(fill=tk.X, pady=(0, 20))
+        
+        stats_grid = ttk.Frame(stats_frame)
+        stats_grid.pack(fill=tk.X)
+        
+        # Estadísticas en columnas
+        self.detections_label = ttk.Label(stats_grid, text="🎯 Detecciones: 0")
+        self.detections_label.grid(row=0, column=0, padx=(0, 20), sticky='w')
+        
+        self.translations_label = ttk.Label(stats_grid, text="✅ Traducciones: 0")
+        self.translations_label.grid(row=0, column=1, padx=(0, 20), sticky='w')
+        
+        self.accuracy_label = ttk.Label(stats_grid, text="🎯 Precisión: 0%")
+        self.accuracy_label.grid(row=0, column=2, padx=(0, 20), sticky='w')
+        
+        self.session_time_label = ttk.Label(stats_grid, text="⏱️ Tiempo: 00:00")
+        self.session_time_label.grid(row=0, column=3, sticky='w')
+        
+        # Actualizar estadísticas cada segundo
+        self.update_stats()
         
         # Frame de controles
         controls_frame = ttk.Frame(main_frame)
@@ -53,49 +137,84 @@ class HandDetectionApp:
         
         # Fila 1 de controles
         controls_row1 = ttk.Frame(controls_frame)
-        controls_row1.pack(fill=tk.X, pady=(0, 10))
+        controls_row1.pack(fill=tk.X, pady=(0, 15))
         
         # Botón de inicio/parada
-        self.start_button = ttk.Button(controls_row1, text="▶️ Iniciar Detección", 
-                                      command=self.toggle_detection)
-        self.start_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.start_button = ttk.Button(controls_row1, text="🚀 Iniciar Detección", 
+                                      command=self.toggle_detection,
+                                      style='Success.TButton')
+        self.start_button.pack(side=tk.LEFT, padx=(0, 15))
         
         # Botón traducción
-        self.translation_button = ttk.Button(controls_row1, text="🇪🇸 Traducción: ON", 
+        self.translation_button = ttk.Button(controls_row1, text="� Traducción: ACTIVA", 
                                             command=self.toggle_translation)
-        self.translation_button.pack(side=tk.LEFT, padx=(0, 10))
+        self.translation_button.pack(side=tk.LEFT, padx=(0, 15))
         
-        # Estado de la detección
-        self.status_label = ttk.Label(controls_row1, text="Estado: Detenido", 
-                                     foreground='#ff6b6b')
-        self.status_label.pack(side=tk.LEFT, padx=(10, 0))
+        # Botón de ayuda
+        self.help_button = ttk.Button(controls_row1, text="❓ Ayuda", 
+                                     command=self.show_help)
+        self.help_button.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        # Estado de la detección con indicador visual
+        status_frame = ttk.Frame(controls_row1)
+        status_frame.pack(side=tk.LEFT, padx=(15, 0))
+        
+        ttk.Label(status_frame, text="Estado:").pack(side=tk.LEFT)
+        self.status_indicator = ttk.Label(status_frame, text="🔴", font=('Arial', 14))
+        self.status_indicator.pack(side=tk.LEFT, padx=(5, 3))
+        
+        self.status_label = ttk.Label(status_frame, text="Detenido")
+        self.status_label.pack(side=tk.LEFT)
         
         # Fila 2 de controles - Entrenamiento
-        controls_row2 = ttk.Frame(controls_frame)
-        controls_row2.pack(fill=tk.X)
+        training_frame = ttk.LabelFrame(controls_frame, text="🎓 Entrenamiento Personalizado", padding="10")
+        training_frame.pack(fill=tk.X, pady=(10, 0))
         
-        # Campo para nombre de seña
-        ttk.Label(controls_row2, text="Entrenar seña:").pack(side=tk.LEFT)
-        self.training_entry = ttk.Entry(controls_row2, width=15)
-        self.training_entry.pack(side=tk.LEFT, padx=(5, 10))
+        training_controls = ttk.Frame(training_frame)
+        training_controls.pack(fill=tk.X)
+        
+        # Campo para nombre de seña con placeholder
+        ttk.Label(training_controls, text="Nombre de la seña:").pack(side=tk.LEFT)
+        self.training_entry = ttk.Entry(training_controls, width=20, font=('Inter', 10))
+        self.training_entry.pack(side=tk.LEFT, padx=(10, 15))
+        self.training_entry.insert(0, "Ej: HOLA_PERSONALIZADO")
+        self.training_entry.bind('<FocusIn>', self.on_entry_focus_in)
+        self.training_entry.bind('<FocusOut>', self.on_entry_focus_out)
         
         # Botón de entrenamiento
-        self.train_button = ttk.Button(controls_row2, text="🎯 Entrenar", 
-                                      command=self.start_training)
+        self.train_button = ttk.Button(training_controls, text="🧠 Entrenar Nueva Seña", 
+                                      command=self.start_training,
+                                      style='Warning.TButton')
         self.train_button.pack(side=tk.LEFT)
         
-        # Frame para la seña detectada
-        sign_frame = ttk.LabelFrame(main_frame, text="👋 Seña Detectada", padding="10")
-        sign_frame.pack(fill=tk.X, pady=(0, 10))
+        # Frame para la seña detectada - Más visual
+        sign_frame = ttk.LabelFrame(main_frame, text="🤲 Reconocimiento en Tiempo Real", padding="20")
+        sign_frame.pack(fill=tk.X, pady=(15, 15))
         
-        self.sign_label = ttk.Label(sign_frame, text=self.current_sign, 
-                                   font=('Arial', 18, 'bold'), foreground='#4ecdc4')
-        self.sign_label.pack()
+        # Container para la seña
+        sign_container = ttk.Frame(sign_frame)
+        sign_container.pack(fill=tk.X)
         
-        self.confidence_label = ttk.Label(sign_frame, 
-                                         text=f"Confianza: {self.sign_confidence:.0%}", 
-                                         font=('Arial', 12))
-        self.confidence_label.pack()
+        # Seña detectada con emoji grande
+        self.sign_emoji = ttk.Label(sign_container, text="🤔", font=('Arial', 32))
+        self.sign_emoji.pack()
+        
+        self.sign_label = ttk.Label(sign_container, text=self.current_sign, 
+                                   font=('Inter', 22, 'bold'))
+        self.sign_label.pack(pady=(5, 0))
+        
+        # Barra de confianza visual
+        confidence_frame = ttk.Frame(sign_container)
+        confidence_frame.pack(fill=tk.X, pady=(10, 5))
+        
+        ttk.Label(confidence_frame, text="Confianza:").pack(side=tk.LEFT)
+        self.confidence_bar = tk.Canvas(confidence_frame, height=20, width=200, 
+                                       bg=self.colors['surface'], highlightthickness=0)
+        self.confidence_bar.pack(side=tk.LEFT, padx=(10, 10))
+        
+        self.confidence_label = ttk.Label(confidence_frame, 
+                                         text=f"{self.sign_confidence:.0%}")
+        self.confidence_label.pack(side=tk.LEFT)
         
         # Frame para el cuadro de texto
         text_frame = ttk.LabelFrame(main_frame, text="📝 Registro de Actividad", 
@@ -106,22 +225,31 @@ class HandDetectionApp:
         self.text_area = scrolledtext.ScrolledText(text_frame, height=15, wrap=tk.WORD)
         self.text_area.pack(fill=tk.BOTH, expand=True)
         
-        # Texto inicial
-        initial_text = """¡Bienvenido al Traductor de Señas Peruano!
+        # Texto inicial con mejor formato
+        initial_text = """🌟 ¡Bienvenido al Traductor de Señas Peruano v2.0! 🌟
 
-Características disponibles:
-• Detección y traducción de señas en tiempo real
-• Entrenamiento de nuevas señas personalizadas
-• Señas básicas incluidas: HOLA, GRACIAS, SI, NO, BIEN, etc.
-• Sistema de confianza y estabilidad para mayor precisión
+🚀 CARACTERÍSTICAS NUEVAS:
+• 🎯 Detección mejorada con IA avanzada
+• 📊 Estadísticas en tiempo real 
+• 🎨 Interfaz moderna y amigable
+• 🧠 Entrenamiento personalizado de señas
+• 📈 Indicadores visuales de confianza
 
-Instrucciones:
-1. Presiona 'Iniciar Detección' para comenzar
-2. Coloca tu mano frente a la cámara
-3. Para entrenar: escribe el nombre de la seña y presiona 'Entrenar'
-4. Mantén la seña estática por unos segundos para mejor reconocimiento
+📋 SEÑAS INCLUIDAS:
+HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • COMIDA
 
-¡Disfruta traduciendo señas!"""
+📚 INSTRUCCIONES RÁPIDAS:
+1. 🚀 Presiona 'Iniciar Detección'
+2. 🤲 Coloca tu mano frente a la cámara
+3. 🎓 Para entrenar nuevas señas: escribe el nombre y presiona 'Entrenar'
+4. ⏱️ Mantén las señas estáticas por 2-3 segundos
+
+💡 CONSEJOS:
+• Asegúrate de tener buena iluminación
+• Usa fondos simples para mejor detección
+• Mantén las manos en el centro del campo visual
+
+¡Comienza tu experiencia de traducción! 🎉"""
         
         self.text_area.insert(tk.END, initial_text)
         
@@ -129,9 +257,9 @@ Instrucciones:
         info_frame = ttk.Frame(main_frame)
         info_frame.pack(fill=tk.X, pady=(10, 0))
         
-        info_text = "💡 Consejo: Asegúrate de tener buena iluminación y mantén las señas estáticas por 2-3 segundos"
-        info_label = ttk.Label(info_frame, text=info_text, foreground='#4ecdc4')
-        info_label.pack()
+        info_text = "💡 Estado: Listo para comenzar • Asegúrate de tener buena iluminación para mejor detección"
+        self.info_label = ttk.Label(info_frame, text=info_text)
+        self.info_label.pack()
         
     def toggle_detection(self):
         """Alterna entre iniciar y parar la detección"""
@@ -145,24 +273,31 @@ Instrucciones:
         success = self.hand_detector.start_detection()
         
         if success:
-            self.start_button.config(text="⏹️ Parar Detección")
-            self.status_label.config(text="Estado: Detectando...", foreground='#4ecdc4')
+            self.start_button.config(text="⏹️ Detener", style='Warning.TButton')
+            self.status_indicator.config(text="🟢")
+            self.status_label.config(text="Detectando...")
+            self.info_label.config(text="🎯 Detección activa • Coloca tu mano frente a la cámara")
         else:
-            self.status_label.config(text="Estado: Error", foreground='#ff6b6b')
+            self.status_indicator.config(text="🔴")
+            self.status_label.config(text="Error de cámara")
+            self.info_label.config(text="❌ Error: No se pudo acceder a la cámara")
             
     def stop_detection(self):
         """Para la detección de manos"""
         self.hand_detector.stop_detection()
         
-        self.start_button.config(text="▶️ Iniciar Detección")
-        self.status_label.config(text="Estado: Detenido", foreground='#ff6b6b')
+        self.start_button.config(text="🚀 Iniciar Detección", style='Success.TButton')
+        self.status_indicator.config(text="🔴")
+        self.status_label.config(text="Detenido")
+        self.info_label.config(text="💡 Presiona 'Iniciar Detección' para comenzar")
         
     def on_hand_detected(self, hand_count):
         """Callback cuando se detectan manos"""
         if hand_count > 0:
+            self.detection_count += 1
             self.update_text(f"👋 Detectadas {hand_count} mano(s) en la imagen")
         else:
-            self.update_text(f"👋 No se detectan manos")
+            self.update_text("👋 No se detectan manos")
             # Limpiar seña cuando no hay manos
             self.update_sign_display("Sin seña detectada", 0.0)
     
@@ -172,12 +307,16 @@ Instrucciones:
         confidence = sign_result.get('confidence', 0.0)
         stability = sign_result.get('stability', 'inestable')
         
+        # Contar traducciones exitosas
+        if confidence > 0.5 and sign_name != "Desconocida":
+            self.successful_translations += 1
+        
         # Actualizar display de seña
         self.update_sign_display(sign_name, confidence)
         
         # Log detallado
         self.update_text(
-            f"👋 Seña: {sign_name} | "
+            f"🤟 Seña: {sign_name} | "
             f"Confianza: {confidence:.1%} | "
             f"Estabilidad: {stability}"
         )
@@ -194,28 +333,35 @@ Instrucciones:
         """Actualiza las etiquetas de seña (llamado desde hilo principal)"""
         self.sign_label.config(text=self.current_sign)
         
-        # Color basado en confianza
+        # Emoji y color basado en confianza
         if self.sign_confidence > 0.8:
-            color = '#4ecdc4'  # Verde azulado (alta confianza)
+            color = self.colors['success']
+            emoji = "🎯"  # Alta confianza
         elif self.sign_confidence > 0.6:
-            color = '#ffeb3b'  # Amarillo (confianza media)
+            color = self.colors['warning'] 
+            emoji = "🤔"  # Confianza media
         elif self.sign_confidence > 0.3:
-            color = '#ff9800'  # Naranja (baja confianza)
+            color = self.colors['text_secondary']
+            emoji = "🤷"  # Baja confianza
         else:
-            color = '#757575'  # Gris (sin seña)
-        
+            color = self.colors['text_secondary']
+            emoji = "🤔"  # Sin seña
+            
+        # Actualizar emoji y color
+        self.sign_emoji.config(text=emoji)
         self.sign_label.config(foreground=color)
-        self.confidence_label.config(text=f"Confianza: {self.sign_confidence:.0%}")
+        self.confidence_label.config(text=f"{self.sign_confidence:.0%}")
+        
+        # Actualizar barra de confianza visual
+        self.update_confidence_bar()
     
     def toggle_translation(self):
         """Activa/desactiva la traducción"""
         if hasattr(self.hand_detector, 'toggle_translation'):
             enabled = self.hand_detector.toggle_translation()
-            status_text = "ON" if enabled else "OFF"
-            color = '#4ecdc4' if enabled else '#ff6b6b'
+            status_text = "ACTIVA" if enabled else "INACTIVA"
             
-            self.translation_button.config(text=f"🇪🇸 Traducción: {status_text}")
-            # Note: ttk buttons don't support foreground color changes easily
+            self.translation_button.config(text=f"� Traducción: {status_text}")
             
             if not enabled:
                 self.update_sign_display("Traducción desactivada", 0.0)
@@ -233,7 +379,7 @@ Instrucciones:
             return
         
         # Iniciar entrenamiento
-        self.hand_detector.add_training_sample(sign_name, f"Seña entrenada por usuario")
+        self.hand_detector.add_training_sample(sign_name, "Seña entrenada por usuario")
         self.update_text(f"🎯 Preparado para entrenar '{sign_name}' - mantén la seña por 2 segundos")
         
         # Limpiar campo
@@ -252,6 +398,149 @@ Instrucciones:
         self.text_area.insert(tk.END, message)
         self.text_area.see(tk.END)
         
+    def update_stats(self):
+        """Actualiza las estadísticas en tiempo real"""
+        try:
+            # Calcular tiempo de sesión
+            session_time = int(time.time() - self.session_start_time)
+            minutes = session_time // 60
+            seconds = session_time % 60
+            time_str = f"{minutes:02d}:{seconds:02d}"
+            
+            # Calcular precisión
+            accuracy = (self.successful_translations / max(1, self.detection_count)) * 100
+            
+            # Actualizar labels
+            self.detections_label.config(text=f"🎯 Detecciones: {self.detection_count}")
+            self.translations_label.config(text=f"✅ Traducciones: {self.successful_translations}")
+            self.accuracy_label.config(text=f"📈 Precisión: {accuracy:.1f}%")
+            self.session_time_label.config(text=f"⏱️ Tiempo: {time_str}")
+            
+        except Exception as e:
+            pass  # Silenciar errores de actualización
+        
+        # Programar siguiente actualización
+        self.root.after(1000, self.update_stats)
+    
+    def update_confidence_bar(self):
+        """Actualiza la barra visual de confianza"""
+        try:
+            self.confidence_bar.delete("all")
+            
+            # Fondo de la barra
+            self.confidence_bar.create_rectangle(0, 0, 200, 20, 
+                                               fill=self.colors['surface'], outline="")
+            
+            # Barra de progreso
+            width = int(200 * self.sign_confidence)
+            if width > 0:
+                # Color basado en confianza
+                if self.sign_confidence > 0.8:
+                    color = self.colors['success']
+                elif self.sign_confidence > 0.6:
+                    color = self.colors['warning']
+                else:
+                    color = self.colors['error']
+                
+                self.confidence_bar.create_rectangle(0, 0, width, 20, 
+                                                   fill=color, outline="")
+        except Exception as e:
+            pass  # Silenciar errores gráficos
+    
+    def on_entry_focus_in(self, event):
+        """Limpia el placeholder cuando se enfoca el campo"""
+        if self.training_entry.get() == "Ej: HOLA_PERSONALIZADO":
+            self.training_entry.delete(0, tk.END)
+    
+    def on_entry_focus_out(self, event):
+        """Restaura el placeholder si el campo está vacío"""
+        if not self.training_entry.get():
+            self.training_entry.insert(0, "Ej: HOLA_PERSONALIZADO")
+    
+    def show_help(self):
+        """Muestra ventana de ayuda"""
+        help_window = tk.Toplevel(self.root)
+        help_window.title("🆘 Ayuda - Traductor de Señas")
+        help_window.geometry("600x500")
+        help_window.configure(bg=self.colors['background'])
+        help_window.transient(self.root)
+        help_window.grab_set()
+        
+        # Centrar ventana
+        help_window.update_idletasks()
+        x = (help_window.winfo_screenwidth() // 2) - (600 // 2)
+        y = (help_window.winfo_screenheight() // 2) - (500 // 2)
+        help_window.geometry(f"600x500+{x}+{y}")
+        
+        # Contenido de ayuda
+        help_frame = ttk.Frame(help_window, padding="20")
+        help_frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(help_frame, text="🆘 Guía de Uso", 
+                 font=('Inter', 16, 'bold')).pack(pady=(0, 20))
+        
+        help_text = scrolledtext.ScrolledText(help_frame, height=20, wrap=tk.WORD)
+        help_text.pack(fill=tk.BOTH, expand=True)
+        
+        help_content = """📖 GUÍA COMPLETA DEL TRADUCTOR DE SEÑAS PERUANO
+
+🚀 INICIO RÁPIDO:
+1. Presiona 'Iniciar Detección' para activar la cámara
+2. Coloca tu mano frente a la cámara web
+3. Realiza las señas despacio y manténlas por 2-3 segundos
+4. Observa el resultado en tiempo real
+
+🤲 SEÑAS DISPONIBLES:
+• HOLA - Mano abierta con movimiento de saludo
+• GRACIAS - Mano hacia el pecho, dedos juntos  
+• SÍ - Puño cerrado con movimiento de asentimiento
+• NO - Índice extendido con movimiento lateral
+• BIEN - Pulgar hacia arriba
+• MAL - Pulgar hacia abajo
+• AMOR - Índice y meñique extendidos (I Love You)
+• PAZ - Índice y medio extendidos (V de victoria)
+• AGUA - Mano formando copa
+• COMIDA - Dedos juntos hacia la boca
+
+🧠 ENTRENAR NUEVAS SEÑAS:
+1. Escribe el nombre de la nueva seña en el campo de entrenamiento
+2. Presiona 'Entrenar Nueva Seña'
+3. Realiza la seña frente a la cámara
+4. Mantén la posición por 3-5 segundos
+5. La seña se guardará automáticamente
+
+📊 ENTENDIENDO LAS ESTADÍSTICAS:
+• Detecciones: Número total de veces que se detectó una mano
+• Traducciones: Señas reconocidas exitosamente
+• Precisión: Porcentaje de detecciones que resultaron en traducciones
+• Tiempo: Duración de la sesión actual
+
+🎯 CONSEJOS PARA MEJOR DETECCIÓN:
+• Usa iluminación uniforme y brillante
+• Evita fondos complejos o con mucho contraste
+• Mantén las manos en el centro del campo visual
+• Realiza movimientos lentos y deliberados
+• Asegúrate de que toda la mano sea visible
+
+⚙️ CONFIGURACIÓN:
+• Traducción: Activa/desactiva el reconocimiento automático
+• El indicador de estado muestra el estado actual del sistema
+• La barra de confianza indica qué tan seguro está el sistema
+
+❗ SOLUCIÓN DE PROBLEMAS:
+• Si no se detectan manos: Revisa la iluminación y posición
+• Si la precisión es baja: Practica las señas más lentamente
+• Si hay errores de cámara: Verifica que no esté siendo usada por otra app
+
+¡Disfruta aprendiendo lenguaje de señas! 🌟"""
+        
+        help_text.insert(tk.END, help_content)
+        help_text.config(state=tk.DISABLED)
+        
+        # Botón cerrar
+        ttk.Button(help_frame, text="✅ Cerrar", 
+                  command=help_window.destroy).pack(pady=(10, 0))
+
     def on_closing(self):
         """Maneja el cierre de la aplicación"""
         if self.hand_detector.is_running():

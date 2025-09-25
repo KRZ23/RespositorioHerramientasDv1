@@ -9,8 +9,9 @@ echo "=" * 50
 # Verificar si existe el entorno virtual
 if [ ! -d "venv_translator" ]; then
     echo "❌ No se encontró el entorno virtual. Creándolo..."
-    python3 -m venv venv_translator
-    echo "✅ Entorno virtual creado"
+    # Usar Python 3.11 para compatibilidad con MediaPipe
+    ~/.local/share/mise/installs/python/3.11.13/bin/python -m venv venv_translator
+    echo "✅ Entorno virtual creado con Python 3.11"
 fi
 
 # Activar entorno virtual
