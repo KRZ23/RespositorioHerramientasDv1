@@ -55,39 +55,39 @@ class HandDetectionApp:
         # Configurar estilos modernos
         style.configure('TFrame', background=self.colors['background'])
         style.configure('TLabel', 
-                       background=self.colors['background'], 
-                       foreground=self.colors['text_primary'], 
-                       font=('Inter', 11))
+                    background=self.colors['background'], 
+                    foreground=self.colors['text_primary'], 
+                    font=('Inter', 11))
         style.configure('Title.TLabel', 
-                       background=self.colors['background'], 
-                       foreground=self.colors['primary'], 
-                       font=('Inter', 20, 'bold'))
+                    background=self.colors['background'], 
+                    foreground=self.colors['primary'], 
+                    font=('Inter', 20, 'bold'))
         style.configure('Subtitle.TLabel', 
-                       background=self.colors['background'], 
-                       foreground=self.colors['text_secondary'], 
-                       font=('Inter', 10))
+                    background=self.colors['background'], 
+                    foreground=self.colors['text_secondary'], 
+                    font=('Inter', 10))
         style.configure('TButton', 
-                       background=self.colors['primary'], 
-                       foreground=self.colors['text_primary'], 
-                       font=('Inter', 10, 'bold'),
-                       focuscolor='none')
+                    background=self.colors['primary'], 
+                    foreground=self.colors['text_primary'], 
+                    font=('Inter', 10, 'bold'),
+                    focuscolor='none')
         style.configure('Success.TButton', 
-                       background=self.colors['success'])
+                    background=self.colors['success'])
         style.configure('Warning.TButton', 
-                       background=self.colors['warning'])
+                    background=self.colors['warning'])
         style.configure('TEntry', 
-                       background=self.colors['surface'], 
-                       foreground=self.colors['text_primary'],
-                       borderwidth=0,
-                       font=('Inter', 10))
+                    background=self.colors['surface'], 
+                    foreground=self.colors['text_primary'],
+                    borderwidth=0,
+                    font=('Inter', 10))
         style.configure('TLabelFrame', 
-                       background=self.colors['background'],
-                       foreground=self.colors['text_secondary'],
-                       borderwidth=1)
+                    background=self.colors['background'],
+                    foreground=self.colors['text_secondary'],
+                    borderwidth=1)
         style.configure('TLabelFrame.Label', 
-                       background=self.colors['background'],
-                       foreground=self.colors['accent'],
-                       font=('Inter', 10, 'bold'))
+                    background=self.colors['background'],
+                    foreground=self.colors['accent'],
+                    font=('Inter', 10, 'bold'))
         
         # Frame principal
         main_frame = ttk.Frame(self.root, padding="25")
@@ -99,13 +99,13 @@ class HandDetectionApp:
         
         # Título principal
         title_label = ttk.Label(header_frame, text="� Traductor de Señas Peruano", 
-                               style='Title.TLabel')
+                            style='Title.TLabel')
         title_label.pack()
         
         # Subtítulo
         subtitle_label = ttk.Label(header_frame, 
-                                 text="Inteligencia Artificial para Lenguaje de Señas • Versión 2.0", 
-                                 style='Subtitle.TLabel')
+                                text="Inteligencia Artificial para Lenguaje de Señas • Versión 2.0", 
+                                style='Subtitle.TLabel')
         subtitle_label.pack(pady=(5, 0))
         
         # Panel de estadísticas (arriba)
@@ -141,8 +141,8 @@ class HandDetectionApp:
         
         # Botón de inicio/parada
         self.start_button = ttk.Button(controls_row1, text="🚀 Iniciar Detección", 
-                                      command=self.toggle_detection,
-                                      style='Success.TButton')
+                                    command=self.toggle_detection,
+                                    style='Success.TButton')
         self.start_button.pack(side=tk.LEFT, padx=(0, 15))
         
         # Botón traducción
@@ -152,7 +152,7 @@ class HandDetectionApp:
         
         # Botón de ayuda
         self.help_button = ttk.Button(controls_row1, text="❓ Ayuda", 
-                                     command=self.show_help)
+                                    command=self.show_help)
         self.help_button.pack(side=tk.RIGHT, padx=(10, 0))
         
         # Estado de la detección con indicador visual
@@ -183,8 +183,8 @@ class HandDetectionApp:
         
         # Botón de entrenamiento
         self.train_button = ttk.Button(training_controls, text="🧠 Entrenar Nueva Seña", 
-                                      command=self.start_training,
-                                      style='Warning.TButton')
+                                    command=self.start_training,
+                                    style='Warning.TButton')
         self.train_button.pack(side=tk.LEFT)
         
         # Frame para la seña detectada - Más visual
@@ -200,7 +200,7 @@ class HandDetectionApp:
         self.sign_emoji.pack()
         
         self.sign_label = ttk.Label(sign_container, text=self.current_sign, 
-                                   font=('Inter', 22, 'bold'))
+                                font=('Inter', 22, 'bold'))
         self.sign_label.pack(pady=(5, 0))
         
         # Barra de confianza visual
@@ -209,16 +209,16 @@ class HandDetectionApp:
         
         ttk.Label(confidence_frame, text="Confianza:").pack(side=tk.LEFT)
         self.confidence_bar = tk.Canvas(confidence_frame, height=20, width=200, 
-                                       bg=self.colors['surface'], highlightthickness=0)
+                                    bg=self.colors['surface'], highlightthickness=0)
         self.confidence_bar.pack(side=tk.LEFT, padx=(10, 10))
         
         self.confidence_label = ttk.Label(confidence_frame, 
-                                         text=f"{self.sign_confidence:.0%}")
+                                        text=f"{self.sign_confidence:.0%}")
         self.confidence_label.pack(side=tk.LEFT)
         
         # Frame para el cuadro de texto
         text_frame = ttk.LabelFrame(main_frame, text="📝 Registro de Actividad", 
-                                   padding="10")
+                                padding="10")
         text_frame.pack(fill=tk.BOTH, expand=True)
         
         # Cuadro de texto con scroll
@@ -429,7 +429,7 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
             
             # Fondo de la barra
             self.confidence_bar.create_rectangle(0, 0, 200, 20, 
-                                               fill=self.colors['surface'], outline="")
+                                            fill=self.colors['surface'], outline="")
             
             # Barra de progreso
             width = int(200 * self.sign_confidence)
@@ -442,8 +442,9 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
                 else:
                     color = self.colors['error']
                 
+                
                 self.confidence_bar.create_rectangle(0, 0, width, 20, 
-                                                   fill=color, outline="")
+                                                fill=color, outline="")
         except Exception as e:
             pass  # Silenciar errores gráficos
     
@@ -477,7 +478,7 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
         help_frame.pack(fill=tk.BOTH, expand=True)
         
         ttk.Label(help_frame, text="🆘 Guía de Uso", 
-                 font=('Inter', 16, 'bold')).pack(pady=(0, 20))
+                font=('Inter', 16, 'bold')).pack(pady=(0, 20))
         
         help_text = scrolledtext.ScrolledText(help_frame, height=20, wrap=tk.WORD)
         help_text.pack(fill=tk.BOTH, expand=True)
@@ -539,7 +540,7 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
         
         # Botón cerrar
         ttk.Button(help_frame, text="✅ Cerrar", 
-                  command=help_window.destroy).pack(pady=(10, 0))
+                command=help_window.destroy).pack(pady=(10, 0))
 
     def on_closing(self):
         """Maneja el cierre de la aplicación"""
