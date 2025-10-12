@@ -4,119 +4,82 @@
 
 /// <reference lib="webworker" />
 __turbopack_context__.s([]);
+var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$onnxruntime$2d$web$2f$dist$2f$ort$2e$bundle$2e$min$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/onnxruntime-web/dist/ort.bundle.min.mjs [app-client] (ecmascript)");
+;
 const ctx = self;
-// Si en el futuro pasas a ONNX, importaremos 'onnxruntime-web' aquí.
-let THRESHOLD = 0.25; // umbral para aceptar en heurístico
-// índices de ayuda (vector [pose(99), left(63), right(63)])
-// OJO: este worker asume el orden [pose, left, right] del keypoints.worker (ajusta si cambias)
-const OFFSET_POSE = 0;
-const OFFSET_RIGHT = 99 + 63;
-const POSE = {
-    MOUTH_RIGHT: 87,
-    MOUTH_LEFT: 84,
-    SHOULDER_R: 33,
-    SHOULDER_L: 36
-};
-const HAND = {
-    WRIST: 0,
-    THUMB_TIP: 4 * 3,
-    INDEX_TIP: 8 * 3,
-    MIDDLE_TIP: 12 * 3
-};
-function getPoint(v, base, i) {
-    const idx = base + i;
-    return {
-        x: v[idx],
-        y: v[idx + 1],
-        z: v[idx + 2]
-    };
-}
-function heuristicInfer(input) {
-    const { data, T, D } = input;
-    const out = {
-        topk: [],
-        accepted: false,
-        latencyMs: 0
-    };
-    const W = Math.min(T, 24);
-    const baseLast = (T - 1) * D;
-    const shR = {
-        x: data[baseLast + (OFFSET_POSE + POSE.SHOULDER_R * 3 + 0)],
-        y: data[baseLast + (OFFSET_POSE + POSE.SHOULDER_R * 3 + 1)]
-    };
-    const shL = {
-        x: data[baseLast + (OFFSET_POSE + POSE.SHOULDER_L * 3 + 0)],
-        y: data[baseLast + (OFFSET_POSE + POSE.SHOULDER_L * 3 + 1)]
-    };
-    const shoulderWidth = Math.hypot(shR.x - shL.x, shR.y - shL.y) || 1;
-    let waveEnergy = 0, indexOsc = 0, thumbUp = 0, thanksScore = 0;
-    let prevWristX = null;
-    let prevIndexX = null;
-    let prevMouthDist = null;
-    for(let t = T - W; t < T; t++){
-        const base = t * D;
-        // mano derecha = usamos RIGHT
-        const rWrist = getPoint(data, base + OFFSET_RIGHT, HAND.WRIST * 3);
-        const rIndex = getPoint(data, base + OFFSET_RIGHT, HAND.INDEX_TIP);
-        const rThumb = getPoint(data, base + OFFSET_RIGHT, HAND.THUMB_TIP);
-        const rMiddle = getPoint(data, base + OFFSET_RIGHT, HAND.MIDDLE_TIP);
-        const mouthR = getPoint(data, base + OFFSET_POSE, POSE.MOUTH_RIGHT * 3);
-        const mouthL = getPoint(data, base + OFFSET_POSE, POSE.MOUTH_LEFT * 3);
-        const mouth = {
-            x: (mouthR.x + mouthL.x) / 2,
-            y: (mouthR.y + mouthL.y) / 2
-        };
-        // HOLA: oleada (oscilación X de muñeca)
-        if (prevWristX !== null) waveEnergy += Math.abs(rWrist.x - prevWristX);
-        prevWristX = rWrist.x;
-        // NO: oscilación lateral del índice
-        if (prevIndexX !== null) indexOsc += Math.abs(rIndex.x - prevIndexX);
-        prevIndexX = rIndex.x;
-        // SI: pulgar arriba (pulgar y < índice/medio y)
-        const thumbAbove = rThumb.y + 0.02 < Math.min(rIndex.y, rMiddle.y);
-        thumbUp += thumbAbove ? 1 : 0;
-        // GRACIAS (demo): mano cerca boca → alejamiento
-        const handMouthDist = Math.hypot(rWrist.x - mouth.x, rWrist.y - mouth.y) / shoulderWidth;
-        if (prevMouthDist !== null && prevMouthDist < 0.2 && handMouthDist > prevMouthDist + 0.05) {
-            thanksScore += 1;
-        }
-        prevMouthDist = handMouthDist;
+let session = null;
+let THRESHOLD = 0.25;
+const LABELS = [
+    "HOLA",
+    "GRACIAS",
+    "ADIOS",
+    "SI",
+    "NO",
+    "PORFAVOR"
+]; // Ejemplo
+// ---- Carga del Modelo y Lógica de Inferencia ----
+async function initONNX() {
+    try {
+        // Asegúrate de que el modelo está en la carpeta /public
+        session = await __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$onnxruntime$2d$web$2f$dist$2f$ort$2e$bundle$2e$min$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["InferenceSession"].create('./lsp_model.onnx');
+        console.log("ONNX session created successfully.");
+    } catch (error) {
+        console.error("Failed to create ONNX session:", error);
+        throw new Error("Could not load the ONNX model.");
     }
-    const waveNorm = waveEnergy / W / shoulderWidth;
-    const indexNorm = indexOsc / W / shoulderWidth;
-    const thumbNorm = thumbUp / W;
-    const thanksNorm = thanksScore / W;
-    const scores = [
-        {
-            label: "HOLA",
-            score: Number(waveNorm.toFixed(3))
-        },
-        {
-            label: "SI",
-            score: Number(thumbNorm.toFixed(3))
-        },
-        {
-            label: "NO",
-            score: Number((indexNorm * 0.8).toFixed(3))
-        },
-        {
-            label: "GRACIAS(DEMO)",
-            score: Number((thanksNorm * 1.5).toFixed(3))
-        }
-    ].sort((a, b)=>b.score - a.score);
-    const accepted = scores[0].score >= THRESHOLD;
-    out.topk = scores.slice(0, 3);
-    out.accepted = accepted;
-    return out;
 }
+async function runONNXInference(input) {
+    if (!session) throw new Error("ONNX session not initialized.");
+    const { data, T, D } = input;
+    const tensor = new __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$onnxruntime$2d$web$2f$dist$2f$ort$2e$bundle$2e$min$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Tensor"]('float32', data, [
+        1,
+        T,
+        D
+    ]);
+    const feeds = {
+        "input_sequence": tensor
+    }; // El nombre "input_sequence" debe coincidir
+    const results = await session.run(feeds);
+    // El nombre "output_label" debe coincidir con el de tu modelo
+    const outputTensor = results.output_label;
+    // Procesa el tensor de salida para obtener scores
+    const scores = Array.from(outputTensor.data);
+    const topk = scores.map((score, i)=>({
+            label: LABELS[i] || "class_".concat(i),
+            score
+        })).sort((a, b)=>b.score - a.score).slice(0, 3);
+    const accepted = topk[0].score >= THRESHOLD;
+    return {
+        topk,
+        accepted,
+        latencyMs: 0
+    }; // Latency se calculará fuera
+}
+// Inferencia SIMULADA para desarrollo sin un modelo real
+function runMockInference(input) {
+    const { T } = input;
+    // Simulación: elige una etiqueta aleatoria y asígnale un score alto
+    const randomIndex = Math.floor(Math.random() * LABELS.length);
+    const topk = LABELS.map((label, i)=>({
+            label,
+            score: i === randomIndex ? 0.8 + Math.random() * 0.2 : Math.random() * 0.1
+        })).sort((a, b)=>b.score - a.score).slice(0, 3);
+    const accepted = topk[0].score >= THRESHOLD;
+    return {
+        topk,
+        accepted,
+        latencyMs: Math.random() * 20 + 5
+    }; // Latencia simulada
+}
+// ---- Manejador de Mensajes del Worker ----
 ctx.onmessage = async (ev)=>{
     const { type, payload } = ev.data;
     try {
         if (type === "init") {
-            // Para heurístico no necesitamos cargar nada.
-            if (payload && typeof payload === "object" && "threshold" in payload && typeof payload.threshold === "number") {
-                THRESHOLD = payload.threshold;
-            }
+            var _this;
+            THRESHOLD = ((_this = payload) === null || _this === void 0 ? void 0 : _this.threshold) || 0.25;
+            // Descomenta la siguiente línea para usar tu modelo ONNX real
+            // await initONNX(); 
             ctx.postMessage({
                 type: "ready"
             });
@@ -124,7 +87,8 @@ ctx.onmessage = async (ev)=>{
         }
         if (type === "infer") {
             const t0 = performance.now();
-            const res = heuristicInfer(payload);
+            // CAMBIA a runONNXInference cuando tengas tu modelo
+            const res = runMockInference(payload);
             res.latencyMs = performance.now() - t0;
             ctx.postMessage({
                 type: "result",
@@ -140,7 +104,6 @@ ctx.onmessage = async (ev)=>{
         });
     }
 };
-;
 if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
