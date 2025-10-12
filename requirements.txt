@@ -1,0 +1,6 @@
+# requirements.txt
+tensorflow
+scikit-learn
+numpy
+onnx
+tf2onnx
