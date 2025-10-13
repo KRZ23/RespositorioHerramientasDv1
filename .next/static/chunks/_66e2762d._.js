@@ -76,7 +76,7 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
 }),
 "[project]/src/workers/keypoints.worker.ts (static in ecmascript)", ((__turbopack_context__) => {
 
-__turbopack_context__.v("/_next/static/media/keypoints.worker.6697fd10.ts");}),
+__turbopack_context__.v("/_next/static/media/keypoints.worker.a6b6aab9.ts");}),
 "[project]/src/workers/keypoints.worker.ts [app-client] (ecmascript, worker loader)", ((__turbopack_context__) => {
 
 __turbopack_context__.v(__turbopack_context__.b([
@@ -112,16 +112,15 @@ function DemoPage() {
     var _result_topk_, _result_topk_1;
     _s();
     const videoRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
-    const loopRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null); // para requestAnimationFrame
+    const loopRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
+    const keypointsWRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
+    const frameCounterRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(0); // <-- NUEVO: Contador de fotogramas
     const [status, setStatus] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("Inicializando…");
     const [result, setResult] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
     const [running, setRunning] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
-    // Referencias a nuestros workers
-    const keypointsWRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
     // -------- INICIALIZACIÓN DE WORKERS --------
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "DemoPage.useEffect": ()=>{
-            // El worker de keypoints se encargará de inicializar el worker de inferencia.
             const kw = new Worker(__turbopack_context__.r("[project]/src/workers/keypoints.worker.ts [app-client] (ecmascript, worker loader)"), {
                 ...{
                     type: "module"
@@ -129,7 +128,6 @@ function DemoPage() {
                 type: undefined
             });
             keypointsWRef.current = kw;
-            // Escuchamos mensajes ÚNICAMENTE del worker de keypoints
             kw.onmessage = ({
                 "DemoPage.useEffect": (e)=>{
                     const { type, payload } = e.data;
@@ -137,7 +135,6 @@ function DemoPage() {
                         setStatus("Listo para iniciar");
                     }
                     if (type === "result") {
-                        // El resultado final de la inferencia nos llega desde el pipeline
                         setResult(payload);
                     }
                     if (type === "error") {
@@ -146,7 +143,6 @@ function DemoPage() {
                     }
                 }
             })["DemoPage.useEffect"];
-            // Inicializamos el pipeline
             kw.postMessage({
                 type: "init",
                 payload: {
@@ -156,7 +152,6 @@ function DemoPage() {
             });
             return ({
                 "DemoPage.useEffect": ()=>{
-                    // Limpieza al desmontar el componente
                     if (loopRef.current) cancelAnimationFrame(loopRef.current);
                     kw.terminate();
                 }
@@ -182,6 +177,7 @@ function DemoPage() {
                 videoRef.current.srcObject = stream;
                 await videoRef.current.play();
                 setRunning(true);
+                frameCounterRef.current = 0; // Reiniciar contador al iniciar
                 loop();
             }
         } catch (error) {
@@ -205,10 +201,10 @@ function DemoPage() {
             loopRef.current = requestAnimationFrame(loop);
             return;
         }
-        // Enviamos el frame de video como ImageBitmap para un procesamiento eficiente
         createImageBitmap(v).then((bitmap)=>{
             var _keypointsWRef_current;
-            const ts = performance.now();
+            // Usamos el contador incremental para garantizar timestamps únicos y crecientes
+            const ts = frameCounterRef.current++; // <-- MODIFICADO
             (_keypointsWRef_current = keypointsWRef.current) === null || _keypointsWRef_current === void 0 ? void 0 : _keypointsWRef_current.postMessage({
                 type: "frame",
                 payload: {
@@ -231,7 +227,7 @@ function DemoPage() {
                     children: "Demo en vivo (Arquitectura Refactorizada)"
                 }, void 0, false, {
                     fileName: "[project]/src/app/demo/page.tsx",
-                    lineNumber: 103,
+                    lineNumber: 98,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -239,7 +235,7 @@ function DemoPage() {
                     children: "El procesamiento de MediaPipe y la inferencia ONNX ocurren en segundo plano."
                 }, void 0, false, {
                     fileName: "[project]/src/app/demo/page.tsx",
-                    lineNumber: 104,
+                    lineNumber: 99,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -257,12 +253,12 @@ function DemoPage() {
                                         className: "h-full w-full object-cover"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/demo/page.tsx",
-                                        lineNumber: 111,
+                                        lineNumber: 106,
                                         columnNumber: 15
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/demo/page.tsx",
-                                    lineNumber: 110,
+                                    lineNumber: 105,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -274,7 +270,7 @@ function DemoPage() {
                                             children: running ? "Detener cámara" : "Activar cámara"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/demo/page.tsx",
-                                            lineNumber: 114,
+                                            lineNumber: 109,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -282,19 +278,19 @@ function DemoPage() {
                                             children: status
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/demo/page.tsx",
-                                            lineNumber: 117,
+                                            lineNumber: 112,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/demo/page.tsx",
-                                    lineNumber: 113,
+                                    lineNumber: 108,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/demo/page.tsx",
-                            lineNumber: 109,
+                            lineNumber: 104,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -305,7 +301,7 @@ function DemoPage() {
                                     children: "Resultado de Inferencia"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/demo/page.tsx",
-                                    lineNumber: 122,
+                                    lineNumber: 117,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -319,7 +315,7 @@ function DemoPage() {
                                                     children: "Top-1:"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/demo/page.tsx",
-                                                    lineNumber: 125,
+                                                    lineNumber: 120,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -327,13 +323,13 @@ function DemoPage() {
                                                     children: result ? "".concat((_result_topk__label = (_result_topk_ = result.topk[0]) === null || _result_topk_ === void 0 ? void 0 : _result_topk_.label) !== null && _result_topk__label !== void 0 ? _result_topk__label : "—", " (").concat((_result_topk__score_toFixed = (_result_topk_1 = result.topk[0]) === null || _result_topk_1 === void 0 ? void 0 : _result_topk_1.score.toFixed(3)) !== null && _result_topk__score_toFixed !== void 0 ? _result_topk__score_toFixed : 0, ")") : "—"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/demo/page.tsx",
-                                                    lineNumber: 126,
+                                                    lineNumber: 121,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/demo/page.tsx",
-                                            lineNumber: 124,
+                                            lineNumber: 119,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -344,7 +340,7 @@ function DemoPage() {
                                                     children: "Top-k:"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/demo/page.tsx",
-                                                    lineNumber: 131,
+                                                    lineNumber: 126,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -352,13 +348,13 @@ function DemoPage() {
                                                     children: result ? result.topk.map((t)=>"".concat(t.label, ":").concat(t.score.toFixed(2))).join(" ") : "—"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/demo/page.tsx",
-                                                    lineNumber: 132,
+                                                    lineNumber: 127,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/demo/page.tsx",
-                                            lineNumber: 130,
+                                            lineNumber: 125,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -369,7 +365,7 @@ function DemoPage() {
                                                     children: "Latencia (ms):"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/demo/page.tsx",
-                                                    lineNumber: 137,
+                                                    lineNumber: 132,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -377,13 +373,13 @@ function DemoPage() {
                                                     children: result ? Math.round(result.latencyMs) : "—"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/demo/page.tsx",
-                                                    lineNumber: 138,
+                                                    lineNumber: 133,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/demo/page.tsx",
-                                            lineNumber: 136,
+                                            lineNumber: 131,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -394,7 +390,7 @@ function DemoPage() {
                                                     children: "Aceptado:"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/demo/page.tsx",
-                                                    lineNumber: 141,
+                                                    lineNumber: 136,
                                                     columnNumber: 17
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -402,19 +398,19 @@ function DemoPage() {
                                                     children: (result === null || result === void 0 ? void 0 : result.accepted) ? "Sí" : "No"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/demo/page.tsx",
-                                                    lineNumber: 142,
+                                                    lineNumber: 137,
                                                     columnNumber: 17
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/demo/page.tsx",
-                                            lineNumber: 140,
+                                            lineNumber: 135,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/demo/page.tsx",
-                                    lineNumber: 123,
+                                    lineNumber: 118,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -422,34 +418,34 @@ function DemoPage() {
                                     children: "*Los resultados son simulados hasta que se entrene un modelo ONNX real."
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/demo/page.tsx",
-                                    lineNumber: 147,
+                                    lineNumber: 142,
                                     columnNumber: 14
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/demo/page.tsx",
-                            lineNumber: 121,
+                            lineNumber: 116,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/demo/page.tsx",
-                    lineNumber: 108,
+                    lineNumber: 103,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/demo/page.tsx",
-            lineNumber: 102,
+            lineNumber: 97,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/src/app/demo/page.tsx",
-        lineNumber: 101,
+        lineNumber: 96,
         columnNumber: 5
     }, this);
 }
-_s(DemoPage, "W8VpXd1E0w17rocNhXRjkiBdPdI=");
+_s(DemoPage, "1cFGDsGq3SSa6N/XR3apiFy+r7o=");
 _c = DemoPage;
 var _c;
 __turbopack_context__.k.register(_c, "DemoPage");

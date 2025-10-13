@@ -170,7 +170,6 @@ ctx.onmessage = async (ev)=>{
         }
         if (type === "capture_window") {
             if (isCollectionMode && buffer.length === T) {
-                // Ahora el tipo de `buffer` (Float32Array[]) es compatible con `KeypointsFrame[]`
                 const sample = {
                     frames: [
                         ...buffer

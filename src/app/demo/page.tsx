@@ -7,22 +7,19 @@ import type { WorkerMsg, InferenceOutput } from "@/lib/types";
 
 export default function DemoPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const loopRef = useRef<number | null>(null); // para requestAnimationFrame
+  const loopRef = useRef<number | null>(null);
+  const keypointsWRef = useRef<Worker | null>(null);
+  const frameCounterRef = useRef<number>(0); // <-- NUEVO: Contador de fotogramas
 
   const [status, setStatus] = useState("Inicializando…");
   const [result, setResult] = useState<InferenceOutput | null>(null);
   const [running, setRunning] = useState(false);
 
-  // Referencias a nuestros workers
-  const keypointsWRef = useRef<Worker | null>(null);
-
   // -------- INICIALIZACIÓN DE WORKERS --------
   useEffect(() => {
-    // El worker de keypoints se encargará de inicializar el worker de inferencia.
     const kw = new Worker(new URL("@/workers/keypoints.worker.ts", import.meta.url), { type: "module" });
     keypointsWRef.current = kw;
 
-    // Escuchamos mensajes ÚNICAMENTE del worker de keypoints
     kw.onmessage = (e: MessageEvent<WorkerMsg>) => {
       const { type, payload } = e.data;
       
@@ -31,7 +28,6 @@ export default function DemoPage() {
       }
       
       if (type === "result") {
-        // El resultado final de la inferencia nos llega desde el pipeline
         setResult(payload as InferenceOutput);
       }
       
@@ -41,11 +37,9 @@ export default function DemoPage() {
       }
     };
 
-    // Inicializamos el pipeline
     kw.postMessage({ type: "init", payload: { T: 48, D: 225 } } as WorkerMsg);
 
     return () => {
-      // Limpieza al desmontar el componente
       if (loopRef.current) cancelAnimationFrame(loopRef.current);
       kw.terminate();
     };
@@ -62,6 +56,7 @@ export default function DemoPage() {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
         setRunning(true);
+        frameCounterRef.current = 0; // Reiniciar contador al iniciar
         loop();
       }
     } catch (error) {
@@ -83,14 +78,14 @@ export default function DemoPage() {
     if (!videoRef.current || !keypointsWRef.current) return;
 
     const v = videoRef.current;
-    if (v.readyState < 2) { // Asegurarse que el video está listo
+    if (v.readyState < 2) {
       loopRef.current = requestAnimationFrame(loop);
       return;
     }
     
-    // Enviamos el frame de video como ImageBitmap para un procesamiento eficiente
     createImageBitmap(v).then(bitmap => {
-      const ts = performance.now();
+      // Usamos el contador incremental para garantizar timestamps únicos y crecientes
+      const ts = frameCounterRef.current++; // <-- MODIFICADO
       keypointsWRef.current?.postMessage({ type: "frame", payload: { video: bitmap, ts } }, [bitmap]);
     }).catch(console.error);
     

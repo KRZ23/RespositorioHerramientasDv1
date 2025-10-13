@@ -1,11 +1,9 @@
-// src/app/coleccion/page.tsx
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import Container from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
-import type { WorkerMsg, WindowSample } from "@/lib/types";
+import type { WorkerMsg, WindowSample, KeypointsFrame } from "@/lib/types";
 
 const VOCABULARIO_MVP = ["HOLA", "ADIOS", "GRACIAS", "PORFAVOR", "PERU"];
 
@@ -13,6 +11,7 @@ export default function ColeccionPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const loopRef = useRef<number | null>(null);
   const keypointsWRef = useRef<Worker | null>(null);
+  const frameCounterRef = useRef<number>(0); // <-- NUEVO: Contador de fotogramas
 
   const [status, setStatus] = useState("Inicializando…");
   const [running, setRunning] = useState(false);
@@ -48,6 +47,7 @@ export default function ColeccionPage() {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
         setRunning(true);
+        frameCounterRef.current = 0; // Reiniciar contador al iniciar
         keypointsWRef.current?.postMessage({ type: "init", payload: { T: 48, D: 225, collectionMode: true } });
         loop();
       }
@@ -65,7 +65,9 @@ export default function ColeccionPage() {
       return;
     }
     createImageBitmap(v).then(bitmap => {
-      keypointsWRef.current?.postMessage({ type: "frame", payload: { video: bitmap, ts: performance.now() } }, [bitmap]);
+      // Usamos el contador incremental para garantizar timestamps únicos y crecientes
+      const ts = frameCounterRef.current++; // <-- MODIFICADO
+      keypointsWRef.current?.postMessage({ type: "frame", payload: { video: bitmap, ts } }, [bitmap]);
     }).catch(console.error);
     loopRef.current = requestAnimationFrame(loop);
   }
@@ -78,7 +80,7 @@ export default function ColeccionPage() {
 
   function downloadSample(sample: WindowSample) {
     const filename = `${currentSign}_${Date.now()}.json`;
-    const serializableFrames = sample.frames.map(frame => Array.from(frame as Float32Array));
+    const serializableFrames = sample.frames.map(frame => Array.from(frame as number[]));
     const dataToSave = { label: currentSign, frames: serializableFrames };
     
     const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: 'application/json' });
@@ -96,6 +98,7 @@ export default function ColeccionPage() {
     <main>
       <Container className="py-8 md:py-12">
         <h1 className="text-3xl font-bold tracking-tight">Herramienta de Recolección de Datos</h1>
+        <p className="mt-2 text-slate-600">Utiliza esta interfaz para generar el dataset de entrenamiento.</p>
         <div className="mt-6 grid gap-4 md:grid-cols-[1.5fr_1fr]">
           <div className="rounded-2xl border bg-white p-3 shadow-sm">
             <div className="aspect-video overflow-hidden rounded-xl bg-slate-100">
