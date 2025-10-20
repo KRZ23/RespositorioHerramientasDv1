@@ -1,5 +1,10 @@
 import cv2
-import mediapipe as mp
+try:
+    import mediapipe as mp
+    HAS_MEDIAPIPE = True
+except Exception:
+    mp = None
+    HAS_MEDIAPIPE = False
 import threading
 import time
 from sign_classifier import SignClassifier
@@ -12,15 +17,26 @@ class HandDetector:
     
     def __init__(self):
         """Inicializa el detector de manos"""
-        # Configurar MediaPipe
-        self.mp_hands = mp.solutions.hands
-        self.hands = self.mp_hands.Hands(
-            static_image_mode=False,
-            max_num_hands=2,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.5
-        )
-        self.mp_draw = mp.solutions.drawing_utils
+        # Configurar MediaPipe (si está disponible)
+        if HAS_MEDIAPIPE and mp is not None:
+            try:
+                self.mp_hands = mp.solutions.hands
+                self.hands = self.mp_hands.Hands(
+                    static_image_mode=False,
+                    max_num_hands=2,
+                    min_detection_confidence=0.7,
+                    min_tracking_confidence=0.5
+                )
+                self.mp_draw = mp.solutions.drawing_utils
+            except Exception:
+                # Fallback a modo sin mediapipe
+                self.mp_hands = None
+                self.hands = None
+                self.mp_draw = None
+        else:
+            self.mp_hands = None
+            self.hands = None
+            self.mp_draw = None
         
         # Variables de control
         self.is_detecting = False
@@ -150,10 +166,19 @@ class HandDetector:
                     
                 # Convierte BGR a RGB
                 imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                results = self.hands.process(imgRGB)
-                
-                # Contar manos detectadas
-                current_hand_count = len(results.multi_hand_landmarks) if results.multi_hand_landmarks else 0
+
+                # Usar MediaPipe si está disponible, si no, operar en modo limitado
+                results = None
+                if self.hands is not None:
+                    try:
+                        results = self.hands.process(imgRGB)
+                    except Exception:
+                        results = None
+
+                # Contar manos detectadas (si MediaPipe no está presente siempre 0)
+                current_hand_count = 0
+                if results and getattr(results, 'multi_hand_landmarks', None):
+                    current_hand_count = len(results.multi_hand_landmarks)
                 
                 # Notificar cambio en número de manos
                 if current_hand_count != hand_count:
@@ -161,8 +186,8 @@ class HandDetector:
                     if self.on_hand_detected:
                         self.on_hand_detected(hand_count)
                 
-                # Procesar traducción de señas si está habilitada
-                if self.translation_enabled and results.multi_hand_landmarks:
+                # Procesar traducción de señas si está habilitada y MediaPipe devuelve landmarks
+                if self.translation_enabled and results and getattr(results, 'multi_hand_landmarks', None):
                     # Tomar la primera mano detectada para clasificación
                     first_hand = results.multi_hand_landmarks[0]
                     
@@ -189,10 +214,14 @@ class HandDetector:
                             if self.on_sign_detected:
                                 self.on_sign_detected(sign_result)
                 
-                # Dibujar landmarks si se detectan manos
-                if results.multi_hand_landmarks:
+                # Dibujar landmarks si se detectan manos (solo si mediapipe está presente)
+                if results and getattr(results, 'multi_hand_landmarks', None) and self.mp_draw is not None and self.mp_hands is not None:
                     for handLms in results.multi_hand_landmarks:
-                        self.mp_draw.draw_landmarks(img, handLms, self.mp_hands.HAND_CONNECTIONS)
+                        try:
+                            self.mp_draw.draw_landmarks(img, handLms, self.mp_hands.HAND_CONNECTIONS)
+                        except Exception:
+                            # ignorar fallos en dibujo
+                            pass
                 
                 # Mostrar ventana de video (solo crear una vez)
                 if not self.window_created:
@@ -218,5 +247,8 @@ class HandDetector:
     def cleanup(self):
         """Limpia todos los recursos"""
         self.stop_detection()
-        if self.hands:
-            self.hands.close()
+        if getattr(self, 'hands', None):
+            try:
+                self.hands.close()
+            except Exception:
+                pass

@@ -1,0 +1,21 @@
+==================================================
+HISTORIAL DE TRADUCCIONES - LENGUAJE DE SEÑAS PERUANO
+==================================================
+
+Sesión: 20/10/2025 14:30:45
+Total de traducciones: 8
+
+--------------------------------------------------
+
+1. [14:30:50] HOLA (Confianza: 85.0%)
+2. [14:31:02] GRACIAS (Confianza: 92.0%)
+3. [14:31:15] BIEN (Confianza: 78.0%)
+4. [14:31:28] AMOR (Confianza: 88.0%)
+5. [14:31:45] PAZ (Confianza: 95.0%)
+6. [14:32:01] AGUA (Confianza: 82.0%)
+7. [14:32:18] COMIDA (Confianza: 90.0%)
+8. [14:32:35] GRACIAS (Confianza: 87.0%)
+
+--------------------------------------------------
+Texto completo:
+HOLA GRACIAS BIEN AMOR PAZ AGUA COMIDA GRACIAS

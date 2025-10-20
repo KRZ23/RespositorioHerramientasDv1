@@ -13,6 +13,9 @@ Este proyecto utiliza inteligencia artificial y visión por computadora para det
 - 📊 **Sistema de confianza**: Muestra el nivel de certeza de cada traducción
 - 🔄 **Estabilidad temporal**: Suavizado de predicciones para mayor precisión
 - 🎨 **Interfaz moderna**: GUI intuitiva con indicadores visuales
+- 📜 **Historial de traducciones**: Almacena automáticamente las traducciones detectadas
+- 🔊 **Text-to-Speech**: Escucha las traducciones en voz alta (español)
+- 💾 **Exportación**: Guarda el historial de traducciones a archivo de texto
 
 ## 🏗️ Arquitectura del Sistema
 

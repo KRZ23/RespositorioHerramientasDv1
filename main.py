@@ -1,15 +1,20 @@
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 import time
+import threading
+import tempfile
+import os
+from gtts import gTTS
+from pygame import mixer
 from hand_detector import HandDetector
 
 class HandDetectionApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("🤟 Traductor de Señas Peruano - v2.0")
-        self.root.geometry("900x700")
+        self.root.title("🤟 Traductor de Señas Peruano - v2.1")
+        self.root.geometry("1100x700")
         self.root.configure(bg='#0f0f23')  # Azul oscuro moderno
-        self.root.minsize(800, 600)
+        self.root.minsize(900, 600)
         
         # Inicializar detector de manos
         self.hand_detector = HandDetector()
@@ -23,6 +28,26 @@ class HandDetectionApp:
         # Variables para traducción
         self.current_sign = "Sin seña detectada"
         self.sign_confidence = 0.0
+        
+        # 🆕 Array para almacenar traducciones
+        self.translation_history = []
+        self.max_history = 100  # Máximo de traducciones en historial
+        
+        # 🆕 Control de duplicados (cooldown)
+        self.last_sign_detected = None
+        self.last_sign_time = 0
+        self.sign_cooldown = 2.0  # Segundos de espera antes de detectar la misma seña otra vez
+        
+        # 🆕 Inicializar motor de Text-to-Speech (gTTS + pygame)
+        try:
+            # Inicializar pygame mixer para reproducción de audio
+            mixer.init()
+            self.tts_available = True
+            self.tts_temp_files = []  # Lista para limpiar archivos temporales
+            print("✅ TTS inicializado correctamente (gTTS + pygame)")
+        except Exception as e:
+            self.tts_available = False
+            print(f"⚠️ TTS no disponible: {e}")
         
         # Variables de estadísticas
         self.detection_count = 0
@@ -185,7 +210,20 @@ class HandDetectionApp:
         self.train_button = ttk.Button(training_controls, text="🧠 Entrenar Nueva Seña", 
                                     command=self.start_training,
                                     style='Warning.TButton')
-        self.train_button.pack(side=tk.LEFT)
+        self.train_button.pack(side=tk.LEFT, padx=(0, 15))
+        
+        # 🆕 Control de cooldown
+        ttk.Label(training_controls, text="Cooldown (seg):").pack(side=tk.LEFT)
+        self.cooldown_var = tk.DoubleVar(value=2.0)
+        self.cooldown_spinbox = ttk.Spinbox(training_controls, 
+                                          from_=0.5, 
+                                          to=10.0, 
+                                          increment=0.5,
+                                          textvariable=self.cooldown_var,
+                                          width=5,
+                                          command=self.update_cooldown)
+        self.cooldown_spinbox.pack(side=tk.LEFT, padx=(5, 0))
+        self.cooldown_spinbox.bind('<Return>', lambda e: self.update_cooldown())
         
         # Frame para la seña detectada - Más visual
         sign_frame = ttk.LabelFrame(main_frame, text="🤲 Reconocimiento en Tiempo Real", padding="20")
@@ -216,6 +254,69 @@ class HandDetectionApp:
                                         text=f"{self.sign_confidence:.0%}")
         self.confidence_label.pack(side=tk.LEFT)
         
+        # 🆕 Frame para historial de traducciones
+        history_frame = ttk.LabelFrame(main_frame, text="📜 Historial de Traducciones", 
+                                    padding="10")
+        history_frame.pack(fill=tk.BOTH, expand=True, pady=(15, 10))
+        
+        # Contenedor para la lista y botones
+        history_container = ttk.Frame(history_frame)
+        history_container.pack(fill=tk.BOTH, expand=True)
+        
+        # Lista del historial con scrollbar
+        history_list_frame = ttk.Frame(history_container)
+        history_list_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        self.history_listbox = tk.Listbox(history_list_frame, 
+                                        height=8,
+                                        font=('Inter', 10),
+                                        bg=self.colors['surface'],
+                                        fg=self.colors['text_primary'],
+                                        selectbackground=self.colors['primary'],
+                                        selectforeground=self.colors['text_primary'],
+                                        borderwidth=0,
+                                        highlightthickness=0)
+        self.history_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        scrollbar = ttk.Scrollbar(history_list_frame, orient="vertical", 
+                                command=self.history_listbox.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.history_listbox.config(yscrollcommand=scrollbar.set)
+        
+        # Panel de botones para el historial
+        history_buttons_frame = ttk.Frame(history_container)
+        history_buttons_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0))
+        
+        # Botón para reproducir en voz
+        self.speak_button = ttk.Button(history_buttons_frame, 
+                                    text="🔊 Reproducir\nSelección",
+                                    command=self.speak_selected,
+                                    style='Success.TButton',
+                                    width=15)
+        self.speak_button.pack(pady=(0, 10))
+        
+        # Botón para reproducir todo
+        self.speak_all_button = ttk.Button(history_buttons_frame, 
+                                        text="🔊 Reproducir\nTodo",
+                                        command=self.speak_all,
+                                        width=15)
+        self.speak_all_button.pack(pady=(0, 10))
+        
+        # Botón para limpiar historial
+        self.clear_button = ttk.Button(history_buttons_frame, 
+                                    text="🗑️ Limpiar\nHistorial",
+                                    command=self.clear_history,
+                                    style='Warning.TButton',
+                                    width=15)
+        self.clear_button.pack(pady=(0, 10))
+        
+        # Botón para exportar
+        self.export_button = ttk.Button(history_buttons_frame, 
+                                    text="💾 Exportar",
+                                    command=self.export_history,
+                                    width=15)
+        self.export_button.pack()
+        
         # Frame para el cuadro de texto
         text_frame = ttk.LabelFrame(main_frame, text="📝 Registro de Actividad", 
                                 padding="10")
@@ -226,7 +327,7 @@ class HandDetectionApp:
         self.text_area.pack(fill=tk.BOTH, expand=True)
         
         # Texto inicial con mejor formato
-        initial_text = """🌟 ¡Bienvenido al Traductor de Señas Peruano v2.0! 🌟
+        initial_text = """🌟 ¡Bienvenido al Traductor de Señas Peruano v2.1! 🌟
 
 🚀 CARACTERÍSTICAS NUEVAS:
 • 🎯 Detección mejorada con IA avanzada
@@ -234,20 +335,27 @@ class HandDetectionApp:
 • 🎨 Interfaz moderna y amigable
 • 🧠 Entrenamiento personalizado de señas
 • 📈 Indicadores visuales de confianza
+• 📜 Historial de traducciones (sin duplicados)
+• 🔊 Text-to-Speech con Google (lectura en voz alta)
+• 💾 Exportación de traducciones
+• ⏱️ Control de cooldown ajustable
 
-📋 SEÑAS INCLUIDAS:
+� SEÑAS INCLUIDAS:
 HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • COMIDA
 
 📚 INSTRUCCIONES RÁPIDAS:
 1. 🚀 Presiona 'Iniciar Detección'
 2. 🤲 Coloca tu mano frente a la cámara
-3. 🎓 Para entrenar nuevas señas: escribe el nombre y presiona 'Entrenar'
-4. ⏱️ Mantén las señas estáticas por 2-3 segundos
+3. ⏱️ Ajusta el cooldown si hay muchos duplicados (por defecto 2 seg)
+4. 🎓 Para entrenar nuevas señas: escribe el nombre y presiona 'Entrenar'
+5. 📜 Revisa tu historial de traducciones
+6. 🔊 Reproduce las traducciones en voz alta
 
 💡 CONSEJOS:
 • Asegúrate de tener buena iluminación
 • Usa fondos simples para mejor detección
 • Mantén las manos en el centro del campo visual
+• El cooldown evita duplicados (ajústalo según necesites)
 
 ¡Comienza tu experiencia de traducción! 🎉"""
         
@@ -310,6 +418,8 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
         # Contar traducciones exitosas
         if confidence > 0.5 and sign_name != "Desconocida":
             self.successful_translations += 1
+            # 🆕 Agregar al historial si la confianza es suficiente
+            self.add_to_history(sign_name, confidence)
         
         # Actualizar display de seña
         self.update_sign_display(sign_name, confidence)
@@ -365,6 +475,15 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
             
             if not enabled:
                 self.update_sign_display("Traducción desactivada", 0.0)
+    
+    def update_cooldown(self):
+        """Actualiza el tiempo de cooldown desde el spinbox"""
+        try:
+            new_cooldown = self.cooldown_var.get()
+            self.sign_cooldown = new_cooldown
+            self.update_text(f"⏱️ Cooldown actualizado a {new_cooldown:.1f} segundos")
+        except:
+            pass
     
     def start_training(self):
         """Inicia el entrenamiento de una nueva seña"""
@@ -541,12 +660,186 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
         # Botón cerrar
         ttk.Button(help_frame, text="✅ Cerrar", 
                 command=help_window.destroy).pack(pady=(10, 0))
+    
+    def add_to_history(self, sign_name, confidence):
+        """Agrega una traducción al historial con control de duplicados"""
+        if sign_name == "Sin seña detectada" or sign_name == "Desconocida":
+            return
+        
+        current_time = time.time()
+        
+        # 🆕 Verificar cooldown: evitar duplicados de la misma seña
+        if (self.last_sign_detected == sign_name and 
+            (current_time - self.last_sign_time) < self.sign_cooldown):
+            # Aún está en cooldown, no agregar
+            return
+        
+        # Actualizar control de cooldown
+        self.last_sign_detected = sign_name
+        self.last_sign_time = current_time
+        
+        timestamp = time.strftime("%H:%M:%S")
+        
+        # Crear entrada del historial
+        history_entry = {
+            'timestamp': timestamp,
+            'sign': sign_name,
+            'confidence': confidence,
+            'datetime': current_time
+        }
+        
+        # Agregar al array
+        self.translation_history.append(history_entry)
+        
+        # Limitar tamaño del historial
+        if len(self.translation_history) > self.max_history:
+            self.translation_history.pop(0)
+        
+        # Actualizar la lista visual
+        self.update_history_display()
+        
+        # Feedback visual/auditivo opcional
+        self.update_text(f"➕ Agregado al historial: {sign_name}")
+    
+    def update_history_display(self):
+        """Actualiza la lista visual del historial"""
+        def _update():
+            self.history_listbox.delete(0, tk.END)
+            
+            for entry in self.translation_history:
+                display_text = f"[{entry['timestamp']}] {entry['sign']} ({entry['confidence']:.0%})"
+                self.history_listbox.insert(tk.END, display_text)
+            
+            # Auto-scroll al final
+            self.history_listbox.see(tk.END)
+        
+        # Ejecutar en hilo principal
+        self.root.after(0, _update)
+    
+    def speak_selected(self):
+        """Reproduce en voz la traducción seleccionada"""
+        if not self.tts_available:
+            self.update_text("⚠️ Text-to-Speech no disponible en este sistema")
+            return
+        
+        selection = self.history_listbox.curselection()
+        if not selection:
+            self.update_text("⚠️ Selecciona una traducción para reproducir")
+            return
+        
+        index = selection[0]
+        if 0 <= index < len(self.translation_history):
+            entry = self.translation_history[index]
+            self.speak_text(entry['sign'])
+            self.update_text(f"🔊 Reproduciendo: {entry['sign']}")
+    
+    def speak_all(self):
+        """Reproduce todas las traducciones del historial"""
+        if not self.tts_available:
+            self.update_text("⚠️ Text-to-Speech no disponible en este sistema")
+            return
+        
+        if not self.translation_history:
+            self.update_text("⚠️ No hay traducciones en el historial")
+            return
+        
+        # Crear frase con todas las señas
+        signs = [entry['sign'] for entry in self.translation_history]
+        full_text = " ".join(signs)
+        
+        self.speak_text(full_text)
+        self.update_text(f"🔊 Reproduciendo todo el historial ({len(signs)} señas)")
+    
+    def speak_text(self, text):
+        """Reproduce texto usando TTS (gTTS + pygame) en un hilo separado"""
+        def _speak():
+            temp_file = None
+            try:
+                # Crear archivo temporal para el audio
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
+                    temp_file = fp.name
+                
+                # Generar audio con gTTS (Google Text-to-Speech)
+                tts = gTTS(text=text, lang='es', slow=False)
+                tts.save(temp_file)
+                
+                # Reproducir con pygame
+                mixer.music.load(temp_file)
+                mixer.music.play()
+                
+                # Esperar a que termine la reproducción
+                while mixer.music.get_busy():
+                    time.sleep(0.1)
+                
+                # Limpiar archivo temporal
+                if temp_file and os.path.exists(temp_file):
+                    try:
+                        os.remove(temp_file)
+                    except:
+                        pass
+                        
+            except Exception as e:
+                self.update_text(f"❌ Error al reproducir: {e}")
+                if temp_file and os.path.exists(temp_file):
+                    try:
+                        os.remove(temp_file)
+                    except:
+                        pass
+        
+        # Ejecutar en hilo separado para no bloquear la UI
+        tts_thread = threading.Thread(target=_speak, daemon=True)
+        tts_thread.start()
+    
+    def clear_history(self):
+        """Limpia el historial de traducciones"""
+        self.translation_history.clear()
+        self.history_listbox.delete(0, tk.END)
+        self.update_text("🗑️ Historial de traducciones limpiado")
+    
+    def export_history(self):
+        """Exporta el historial a un archivo de texto"""
+        if not self.translation_history:
+            self.update_text("⚠️ No hay traducciones para exportar")
+            return
+        
+        try:
+            filename = f"traducciones_{time.strftime('%Y%m%d_%H%M%S')}.txt"
+            
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write("=" * 50 + "\n")
+                f.write("HISTORIAL DE TRADUCCIONES - LENGUAJE DE SEÑAS PERUANO\n")
+                f.write("=" * 50 + "\n\n")
+                f.write(f"Sesión: {time.strftime('%d/%m/%Y %H:%M:%S')}\n")
+                f.write(f"Total de traducciones: {len(self.translation_history)}\n\n")
+                f.write("-" * 50 + "\n\n")
+                
+                for i, entry in enumerate(self.translation_history, 1):
+                    f.write(f"{i}. [{entry['timestamp']}] {entry['sign']} "
+                           f"(Confianza: {entry['confidence']:.1%})\n")
+                
+                f.write("\n" + "-" * 50 + "\n")
+                f.write("Texto completo:\n")
+                signs = [entry['sign'] for entry in self.translation_history]
+                f.write(" ".join(signs) + "\n")
+            
+            self.update_text(f"💾 Historial exportado a: {filename}")
+            
+        except Exception as e:
+            self.update_text(f"❌ Error al exportar: {e}")
 
     def on_closing(self):
         """Maneja el cierre de la aplicación"""
         if self.hand_detector.is_running():
             self.hand_detector.stop_detection()
         self.hand_detector.cleanup()
+        
+        # Detener música si está reproduciéndose
+        try:
+            if self.tts_available:
+                mixer.music.stop()
+        except:
+            pass
+        
         self.root.destroy()
 
 def main():
