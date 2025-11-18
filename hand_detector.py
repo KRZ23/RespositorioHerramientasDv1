@@ -15,8 +15,14 @@ class HandDetector:
     Maneja toda la lógica de detección de forma independiente.
     """
     
-    def __init__(self):
-        """Inicializa el detector de manos"""
+    def __init__(self, show_window=True):
+        """
+        Inicializa el detector de manos
+        
+        Args:
+            show_window (bool): Si True, muestra ventana de OpenCV. Si False, solo procesa en background.
+        """
+        self.show_window = show_window
         # Configurar MediaPipe (si está disponible)
         if HAS_MEDIAPIPE and mp is not None:
             try:
@@ -261,15 +267,19 @@ class HandDetector:
                             # ignorar fallos en dibujo
                             pass
                 
-                # Mostrar ventana de video (solo crear una vez)
-                if not self.window_created:
-                    cv2.namedWindow("Detección de Manos", cv2.WINDOW_NORMAL)
-                    self.window_created = True
-                cv2.imshow("Detección de Manos", img)
-                
-                # Verificar si se presiona 'q' para salir
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
+                # Mostrar ventana de video SOLO si show_window=True
+                if self.show_window:
+                    if not self.window_created:
+                        cv2.namedWindow("Detección de Manos", cv2.WINDOW_NORMAL)
+                        self.window_created = True
+                    cv2.imshow("Detección de Manos", img)
+                    
+                    # Verificar si se presiona 'q' para salir
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                else:
+                    # Si no hay ventana, solo esperar un poco para no saturar CPU
+                    time.sleep(0.001)
                     
         except Exception as e:
             error_msg = f"❌ Error en detección: {str(e)}"
