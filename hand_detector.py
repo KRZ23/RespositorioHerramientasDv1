@@ -83,13 +83,27 @@ class HandDetector:
                 if self.on_status_update:
                     self.on_status_update("⚠️ La detección ya está en curso")
                 return False
+            
+            # 🔧 FIX: Asegurarse de liberar la cámara anterior si existe
+            if self.cap is not None:
+                try:
+                    self.cap.release()
+                    self.cap = None
+                except:
+                    pass
                 
             # Inicializar cámara
             self.cap = cv2.VideoCapture(0)
+            
+            # 🔧 FIX: Dar un momento para que la cámara se inicialice
+            import time
+            time.sleep(0.5)
+            
             if not self.cap.isOpened():
                 error_msg = "❌ Error: No se pudo acceder a la cámara"
                 if self.on_error:
                     self.on_error(error_msg)
+                self.cap = None
                 return False
                 
             # Iniciar detección
@@ -109,21 +123,45 @@ class HandDetector:
             error_msg = f"❌ Error al iniciar detección: {str(e)}"
             if self.on_error:
                 self.on_error(error_msg)
+            if self.cap:
+                self.cap.release()
+                self.cap = None
             return False
             
     def stop_detection(self):
         """Para la detección de manos"""
+        if not self.is_detecting:
+            return  # Ya está detenido
+            
         self.is_detecting = False
         
-        # Esperar a que termine el hilo
+        # 🔧 FIX: Esperar un poco más para que el hilo termine
         if self.detection_thread and self.detection_thread.is_alive():
-            self.detection_thread.join(timeout=1.0)
+            self.detection_thread.join(timeout=2.0)
         
-        # Liberar recursos
-        if self.cap:
-            self.cap.release()
-            
-        cv2.destroyAllWindows()
+        # 🔧 FIX: Cerrar ventanas de OpenCV primero
+        try:
+            cv2.destroyAllWindows()
+            # Dar tiempo para que las ventanas se cierren
+            import time
+            time.sleep(0.3)
+        except:
+            pass
+        
+        # 🔧 FIX: Liberar recursos de cámara con retry
+        if self.cap is not None:
+            try:
+                self.cap.release()
+                import time
+                time.sleep(0.2)  # Dar tiempo para que se libere
+            except Exception as e:
+                print(f"Error al liberar cámara: {e}")
+            finally:
+                self.cap = None  # Resetear a None para permitir reinicio
+        
+        # Resetear el hilo
+        self.detection_thread = None
+        self.window_created = False
         
         if self.on_status_update:
             self.on_status_update("⏹️ Detección detenida")
@@ -238,17 +276,39 @@ class HandDetector:
             if self.on_error:
                 self.on_error(error_msg)
         finally:
-            # Limpiar al salir
-            if self.cap:
-                self.cap.release()
-            cv2.destroyAllWindows()
+            # 🔧 FIX: Marcar como no detectando primero
             self.is_detecting = False
+            
+            # 🔧 FIX: NO liberar la cámara aquí, dejar que stop_detection lo haga
+            # para evitar conflictos de liberación doble
+            
+            # Cerrar solo las ventanas de OpenCV
+            try:
+                cv2.destroyAllWindows()
+            except:
+                pass
             
     def cleanup(self):
         """Limpia todos los recursos"""
         self.stop_detection()
+        
+        # 🔧 FIX: Asegurar que la cámara se libere completamente
+        if self.cap is not None:
+            try:
+                self.cap.release()
+                self.cap = None
+            except Exception:
+                pass
+        
+        # Cerrar mediapipe
         if getattr(self, 'hands', None):
             try:
                 self.hands.close()
             except Exception:
                 pass
+        
+        # Cerrar todas las ventanas de OpenCV
+        try:
+            cv2.destroyAllWindows()
+        except Exception:
+            pass

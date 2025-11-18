@@ -175,6 +175,12 @@ class HandDetectionApp:
                                             command=self.toggle_translation)
         self.translation_button.pack(side=tk.LEFT, padx=(0, 15))
         
+        # Botón de salir
+        self.exit_button = ttk.Button(controls_row1, text="🚪 Salir", 
+                                    command=self.on_closing,
+                                    style='Warning.TButton')
+        self.exit_button.pack(side=tk.RIGHT, padx=(0, 0))
+        
         # Botón de ayuda
         self.help_button = ttk.Button(controls_row1, text="❓ Ayuda", 
                                     command=self.show_help)
