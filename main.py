@@ -204,8 +204,20 @@ class HandDetectionApp:
         training_controls = ttk.Frame(training_frame)
         training_controls.pack(fill=tk.X)
         
+        # 🆕 SELECTOR DE MODO (Estático/Dinámico)
+        ttk.Label(training_controls, text="Tipo:").pack(side=tk.LEFT)
+        self.training_mode = tk.StringVar(value="ESTATICO")
+        mode_static = ttk.Radiobutton(training_controls, text="📍 Estático", 
+                                     variable=self.training_mode, value="ESTATICO",
+                                     command=self.on_training_mode_changed)
+        mode_static.pack(side=tk.LEFT, padx=(5, 0))
+        mode_dynamic = ttk.Radiobutton(training_controls, text="🔄 Dinámico", 
+                                      variable=self.training_mode, value="DINAMICO",
+                                      command=self.on_training_mode_changed)
+        mode_dynamic.pack(side=tk.LEFT, padx=(5, 15))
+        
         # Campo para nombre de seña con placeholder
-        ttk.Label(training_controls, text="Nombre de la seña:").pack(side=tk.LEFT)
+        ttk.Label(training_controls, text="Nombre:").pack(side=tk.LEFT)
         self.training_entry = ttk.Entry(training_controls, width=20, font=('Inter', 10))
         self.training_entry.pack(side=tk.LEFT, padx=(10, 15))
         self.training_entry.insert(0, "Ej: HOLA_PERSONALIZADO")
@@ -213,7 +225,7 @@ class HandDetectionApp:
         self.training_entry.bind('<FocusOut>', self.on_entry_focus_out)
         
         # Botón de entrenamiento
-        self.train_button = ttk.Button(training_controls, text="🧠 Entrenar Nueva Seña", 
+        self.train_button = ttk.Button(training_controls, text="🧠 Entrenar Seña", 
                                     command=self.start_training,
                                     style='Warning.TButton')
         self.train_button.pack(side=tk.LEFT, padx=(0, 15))
@@ -495,7 +507,8 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
         """Inicia el entrenamiento de una nueva seña"""
         sign_name = self.training_entry.get().strip().upper()
         
-        if not sign_name:
+        # Validar que no sea placeholder
+        if not sign_name or sign_name in ["EJ: HOLA_PERSONALIZADO", "EJ: LETRA_A", "EJ: HOLA_MOVIMIENTO"]:
             self.update_text("⚠️ Error: Ingresa el nombre de la seña a entrenar")
             return
         
@@ -503,9 +516,19 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
             self.update_text("⚠️ Error: Inicia la detección primero")
             return
         
-        # Iniciar entrenamiento
-        self.hand_detector.add_training_sample(sign_name, "Seña entrenada por usuario")
-        self.update_text(f"🎯 Preparado para entrenar '{sign_name}' - mantén la seña por 2 segundos")
+        # Obtener modo de entrenamiento
+        mode = self.training_mode.get()
+        
+        if mode == "ESTATICO":
+            # Entrenamiento de seña estática (existente)
+            self.hand_detector.add_training_sample(sign_name, "Seña estática entrenada por usuario")
+            self.update_text(f"📍 Modo ESTÁTICO activado para '{sign_name}'")
+            self.update_text(f"🎯 Mantén la seña QUIETA por 2 segundos...")
+        else:
+            # Entrenamiento de seña dinámica (nuevo)
+            self.hand_detector.start_dynamic_training(sign_name)
+            self.update_text(f"🔄 Modo DINÁMICO activado para '{sign_name}'")
+            self.update_text(f"🎯 Realiza el MOVIMIENTO de la seña durante 2-3 segundos...")
         
         # Limpiar campo
         self.training_entry.delete(0, tk.END)
@@ -573,15 +596,31 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
         except Exception as e:
             pass  # Silenciar errores gráficos
     
+    def on_training_mode_changed(self):
+        """Callback cuando cambia el modo de entrenamiento"""
+        mode = self.training_mode.get()
+        if mode == "ESTATICO":
+            self.update_text("💡 Modo ESTÁTICO: Mantén la seña quieta durante la captura")
+            self.training_entry.delete(0, tk.END)
+            self.training_entry.insert(0, "Ej: LETRA_A")
+        else:
+            self.update_text("💡 Modo DINÁMICO: Realiza el movimiento de la seña durante 2-3 segundos")
+            self.training_entry.delete(0, tk.END)
+            self.training_entry.insert(0, "Ej: HOLA_MOVIMIENTO")
+    
     def on_entry_focus_in(self, event):
         """Limpia el placeholder cuando se enfoca el campo"""
-        if self.training_entry.get() == "Ej: HOLA_PERSONALIZADO":
+        current = self.training_entry.get()
+        if current in ["Ej: HOLA_PERSONALIZADO", "Ej: LETRA_A", "Ej: HOLA_MOVIMIENTO"]:
             self.training_entry.delete(0, tk.END)
     
     def on_entry_focus_out(self, event):
         """Restaura el placeholder si el campo está vacío"""
         if not self.training_entry.get():
-            self.training_entry.insert(0, "Ej: HOLA_PERSONALIZADO")
+            if self.training_mode.get() == "ESTATICO":
+                self.training_entry.insert(0, "Ej: LETRA_A")
+            else:
+                self.training_entry.insert(0, "Ej: HOLA_MOVIMIENTO")
     
     def show_help(self):
         """Muestra ventana de ayuda"""

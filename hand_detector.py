@@ -8,6 +8,8 @@ except Exception:
 import threading
 import time
 from sign_classifier import SignClassifier
+from movement_analyzer import MovementAnalyzer
+from dynamic_signs_dataset import DYNAMIC_SIGNS_PATTERNS, is_dynamic_sign
 
 class HandDetector:
     """
@@ -53,6 +55,10 @@ class HandDetector:
         # Inicializar clasificador de señas
         self.sign_classifier = SignClassifier(confidence_threshold=0.6)
         self.translation_enabled = True
+        
+        # Inicializar analizador de movimiento para señas dinámicas
+        self.movement_analyzer = MovementAnalyzer(buffer_size=15, fps=30)
+        self.use_movement_detection = True  # Activar detección de movimiento
         
         # Callbacks para comunicación con la interfaz
         self.on_hand_detected = None
@@ -171,6 +177,215 @@ class HandDetector:
         
         if self.on_status_update:
             self.on_status_update("⏹️ Detección detenida")
+    
+    def _classify_dynamic_sign(self, landmarks):
+        """
+        Clasifica señas dinámicas basándose en patrones de movimiento.
+        NO usa TensorFlow ni ML, solo análisis de características.
+        
+        Args:
+            landmarks: Landmarks de MediaPipe de la mano actual
+            
+        Returns:
+            dict con sign, confidence, description si se detecta, None si no
+        """
+        # Agregar frame actual al buffer de movimiento
+        self.movement_analyzer.add_frame(landmarks)
+        
+        # Obtener características de movimiento
+        movement_features = self.movement_analyzer.get_movement_features()
+        
+        if not movement_features:
+            return None
+        
+        # Verificar si hay suficiente movimiento
+        avg_speed = movement_features.get('avg_speed', 0)
+        if avg_speed < 0.02:  # Umbral de movimiento mínimo
+            return None
+        
+        # Buscar coincidencias en patrones dinámicos
+        best_match = None
+        best_score = 0.0
+        
+        for sign_name, pattern in DYNAMIC_SIGNS_PATTERNS.items():
+            score = self._match_movement_pattern(movement_features, pattern, landmarks)
+            
+            if score > best_score:
+                best_score = score
+                best_match = sign_name
+        
+        # Retornar resultado si supera umbral
+        if best_score > 0.6:
+            return {
+                'sign': best_match,
+                'confidence': best_score,
+                'description': f"Seña dinámica: {best_match}",
+                'type': 'dynamic'
+            }
+        
+        return None
+    
+    def _match_movement_pattern(self, features, pattern, landmarks):
+        """
+        Compara características de movimiento con un patrón de seña dinámica.
+        
+        Args:
+            features: Dict con características de movimiento
+            pattern: Dict con patrón esperado de la seña
+            landmarks: Landmarks actuales de la mano
+            
+        Returns:
+            float: Puntuación de 0 a 1
+        """
+        score = 0.0
+        weights = {
+            'pattern': 0.20,
+            'direction': 0.15,
+            'frequency': 0.15,
+            'speed': 0.15,
+            'trajectory': 0.10,
+            'hand_shape': 0.25
+        }
+        
+        # 1. Comparar patrón de movimiento
+        if features.get('movement_pattern') == pattern.get('movement_pattern'):
+            score += weights['pattern']
+        
+        # 2. Comparar dirección
+        direction_score = self._compare_direction(
+            features.get('direction', 'ESTATICO'),
+            pattern.get('direction', 'ESTATICO')
+        )
+        score += direction_score * weights['direction']
+        
+        # 3. Comparar frecuencia
+        freq = features.get('frequency', 0)
+        freq_range = pattern.get('frequency_range', (0, 100))
+        if freq_range[0] <= freq <= freq_range[1]:
+            score += weights['frequency']
+        
+        # 4. Comparar velocidad promedio
+        speed = features.get('avg_speed', 0)
+        speed_range = pattern.get('avg_speed_range', (0, 100))
+        if speed_range[0] <= speed <= speed_range[1]:
+            score += weights['speed']
+        
+        # 5. Comparar longitud de trayectoria
+        trajectory = features.get('trajectory_length', 0)
+        trajectory_range = pattern.get('trajectory_length_range', (0, 100))
+        if trajectory_range[0] <= trajectory <= trajectory_range[1]:
+            score += weights['trajectory']
+        
+        # 6. Comparar forma de mano (usando landmarks)
+        if 'hand_shape' in pattern:
+            hand_shape_score = self._match_hand_shape(landmarks, pattern['hand_shape'])
+            score += hand_shape_score * weights['hand_shape']
+        else:
+            score += weights['hand_shape']  # Si no hay shape específico, dar puntos
+        
+        return score
+    
+    def _compare_direction(self, detected, expected):
+        """Compara direcciones con tolerancia para direcciones compatibles"""
+        if detected == expected:
+            return 1.0
+        
+        # Direcciones compatibles (devuelve score parcial)
+        compatible = {
+            'ARRIBA': ['ARRIBA_IZQUIERDA', 'ARRIBA_DERECHA'],
+            'ABAJO': ['ABAJO_IZQUIERDA', 'ABAJO_DERECHA'],
+            'IZQUIERDA': ['ARRIBA_IZQUIERDA', 'ABAJO_IZQUIERDA'],
+            'DERECHA': ['ARRIBA_DERECHA', 'ABAJO_DERECHA'],
+            'IZQUIERDA_DERECHA': ['IZQUIERDA', 'DERECHA'],
+            'ARRIBA_ABAJO': ['ARRIBA', 'ABAJO']
+        }
+        
+        if expected in compatible and detected in compatible[expected]:
+            return 0.7
+        if detected in compatible and expected in compatible[detected]:
+            return 0.7
+        
+        return 0.0
+    
+    def _match_hand_shape(self, landmarks, hand_shape_pattern):
+        """
+        Compara la forma de la mano actual con un patrón esperado.
+        
+        Args:
+            landmarks: Landmarks de MediaPipe
+            hand_shape_pattern: Dict con fingers_extended, hand_openness, etc.
+            
+        Returns:
+            float: Puntuación de 0 a 1
+        """
+        try:
+            # Convertir landmarks a lista de puntos
+            points = [[lm.x, lm.y, lm.z] for lm in landmarks]
+            
+            score = 0.0
+            
+            # Comparar dedos extendidos
+            if 'fingers_extended' in hand_shape_pattern:
+                expected_fingers = hand_shape_pattern['fingers_extended']
+                actual_fingers = self._get_fingers_extended(points)
+                
+                matches = sum(1 for e, a in zip(expected_fingers, actual_fingers) if e == a)
+                score += (matches / 5.0) * 0.6  # 60% del peso en dedos
+            
+            # Comparar apertura de mano
+            if 'hand_openness' in hand_shape_pattern:
+                expected_openness = hand_shape_pattern['hand_openness']
+                actual_openness = self._get_hand_openness(points)
+                
+                # Tolerancia de ±0.15
+                diff = abs(expected_openness - actual_openness)
+                if diff < 0.15:
+                    score += 0.4  # 40% del peso en apertura
+                elif diff < 0.3:
+                    score += 0.2  # Parcial si está cerca
+            
+            return score if score > 0 else 0.5
+            
+        except Exception:
+            return 0.5  # Score neutro en caso de error
+    
+    def _get_fingers_extended(self, points):
+        """Calcula qué dedos están extendidos (heurística simple)"""
+        try:
+            fingers = []
+            # Índices: WRIST=0, tips=[4,8,12,16,20], pips=[3,6,10,14,18]
+            finger_indices = [(4,3), (8,6), (12,10), (16,14), (20,18)]
+            
+            for tip_idx, pip_idx in finger_indices:
+                tip_y = points[tip_idx][1]
+                pip_y = points[pip_idx][1]
+                
+                # En coordenadas de imagen, Y menor = más arriba
+                is_extended = tip_y < pip_y
+                fingers.append(is_extended)
+            
+            return fingers
+        except:
+            return [False] * 5
+    
+    def _get_hand_openness(self, points):
+        """Calcula apertura de la mano (0=cerrada, 1=abierta)"""
+        try:
+            # Distancia promedio entre dedos adyacentes
+            fingertips = [4, 8, 12, 16, 20]
+            total_distance = 0
+            
+            for i in range(len(fingertips) - 1):
+                p1 = points[fingertips[i]]
+                p2 = points[fingertips[i+1]]
+                dist = ((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 + (p1[2]-p2[2])**2)**0.5
+                total_distance += dist
+            
+            # Normalizar (valores típicos entre 0.2 y 0.8)
+            openness = min(total_distance / 2.0, 1.0)
+            return openness
+        except:
+            return 0.5
             
     def is_running(self):
         """Verifica si la detección está activa"""
@@ -189,14 +404,105 @@ class HandDetector:
         return self.translation_enabled
     
     def add_training_sample(self, sign_name, description=""):
-        """Añade muestra de entrenamiento del frame actual"""
+        """Añade muestra de entrenamiento de seña ESTÁTICA"""
         # Esta función será llamada desde la interfaz cuando se quiera entrenar
         # El entrenamiento se hará con el próximo frame detectado
         self.training_sign_name = sign_name
         self.training_description = description
         self.on_training_mode = True
+        self.dynamic_training_mode = False  # Modo estático
         if self.on_status_update:
-            self.on_status_update(f"Modo entrenamiento: {sign_name}")
+            self.on_status_update(f"Modo entrenamiento ESTÁTICO: {sign_name}")
+    
+    def start_dynamic_training(self, sign_name):
+        """
+        Inicia el entrenamiento de una seña DINÁMICA
+        Captura el patrón de movimiento durante 2-3 segundos
+        """
+        import json
+        
+        self.training_sign_name = sign_name
+        self.on_training_mode = True
+        self.dynamic_training_mode = True  # Modo dinámico
+        self.dynamic_training_buffer = []  # Buffer para guardar características de movimiento
+        self.dynamic_training_start_time = time.time()
+        
+        if self.on_status_update:
+            self.on_status_update(f"Modo entrenamiento DINÁMICO: {sign_name} - Realiza el movimiento...")
+    
+    def _save_dynamic_pattern(self, sign_name, features_list):
+        """
+        Guarda el patrón de movimiento capturado en el dataset dinámico
+        
+        Args:
+            sign_name: Nombre de la seña
+            features_list: Lista de características de movimiento capturadas
+        """
+        import json
+        import os
+        
+        try:
+            # Calcular estadísticas promedio del movimiento
+            if not features_list:
+                return False
+            
+            # Promediar características
+            avg_features = {
+                'movement_pattern': features_list[-1].get('movement_pattern', 'LINEAR'),
+                'direction': features_list[-1].get('direction', 'ESTATICO'),
+                'frequency_range': (
+                    min(f.get('frequency', 0) for f in features_list),
+                    max(f.get('frequency', 0) for f in features_list)
+                ),
+                'avg_speed_range': (
+                    min(f.get('avg_speed', 0) for f in features_list),
+                    max(f.get('avg_speed', 0) for f in features_list)
+                ),
+                'trajectory_length_range': (
+                    min(f.get('trajectory_length', 0) for f in features_list),
+                    max(f.get('trajectory_length', 0) for f in features_list)
+                )
+            }
+            
+            # Cargar dataset existente
+            dataset_file = 'dynamic_signs_dataset.py'
+            with open(dataset_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            # Agregar nueva seña al diccionario DYNAMIC_SIGNS_PATTERNS
+            new_pattern = f"""
+    '{sign_name}': {{
+        'movement_pattern': '{avg_features['movement_pattern']}',
+        'direction': '{avg_features['direction']}',
+        'frequency_range': {avg_features['frequency_range']},
+        'avg_speed_range': {avg_features['avg_speed_range']},
+        'trajectory_length_range': {avg_features['trajectory_length_range']},
+        'hand_shape': {{
+            'fingers_extended': [True, True, True, True, True],
+            'hand_openness': 0.6
+        }}
+    }},
+"""
+            
+            # Insertar antes del cierre del diccionario
+            insertion_point = content.rfind('}')
+            if insertion_point > 0:
+                # Encontrar el último patrón
+                last_pattern = content.rfind("    },", 0, insertion_point)
+                if last_pattern > 0:
+                    content = content[:last_pattern + 6] + new_pattern + content[last_pattern + 6:]
+                    
+                    # Guardar archivo actualizado
+                    with open(dataset_file, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    
+                    return True
+            
+            return False
+            
+        except Exception as e:
+            print(f"Error guardando patrón dinámico: {e}")
+            return False
         
     def _detection_loop(self):
         """Bucle principal de detección (ejecutado en hilo separado)"""
@@ -237,26 +543,90 @@ class HandDetector:
                     
                     # Modo entrenamiento
                     if self.on_training_mode and hasattr(self, 'training_sign_name'):
-                        success = self.sign_classifier.add_training_sample(
-                            self.training_sign_name, first_hand, 
-                            getattr(self, 'training_description', '')
-                        )
-                        if success and self.on_status_update:
-                            self.on_status_update(f"Muestra de {self.training_sign_name} guardada ✓")
-                        self.on_training_mode = False
-                        delattr(self, 'training_sign_name')
+                        
+                        # Verificar si es entrenamiento dinámico
+                        if getattr(self, 'dynamic_training_mode', False):
+                            # ENTRENAMIENTO DINÁMICO - Capturar movimiento durante 2-3 segundos
+                            self.movement_analyzer.add_frame(first_hand.landmark)
+                            features = self.movement_analyzer.get_movement_features()
+                            
+                            if features:
+                                if not hasattr(self, 'dynamic_training_buffer'):
+                                    self.dynamic_training_buffer = []
+                                self.dynamic_training_buffer.append(features)
+                            
+                            # Verificar si ya pasaron 3 segundos
+                            elapsed = time.time() - getattr(self, 'dynamic_training_start_time', time.time())
+                            if elapsed >= 3.0:
+                                # Guardar patrón capturado
+                                if len(self.dynamic_training_buffer) > 10:
+                                    success = self._save_dynamic_pattern(
+                                        self.training_sign_name,
+                                        self.dynamic_training_buffer
+                                    )
+                                    if success and self.on_status_update:
+                                        self.on_status_update(f"✓ Seña dinámica '{self.training_sign_name}' guardada!")
+                                    elif self.on_status_update:
+                                        self.on_status_update(f"✗ Error guardando '{self.training_sign_name}'")
+                                else:
+                                    if self.on_status_update:
+                                        self.on_status_update("✗ No se capturó suficiente movimiento")
+                                
+                                # Limpiar variables
+                                self.on_training_mode = False
+                                self.dynamic_training_mode = False
+                                delattr(self, 'training_sign_name')
+                                if hasattr(self, 'dynamic_training_buffer'):
+                                    delattr(self, 'dynamic_training_buffer')
+                        
+                        else:
+                            # ENTRENAMIENTO ESTÁTICO - Captura un solo frame
+                            success = self.sign_classifier.add_training_sample(
+                                self.training_sign_name, first_hand, 
+                                getattr(self, 'training_description', '')
+                            )
+                            if success and self.on_status_update:
+                                self.on_status_update(f"✓ Seña estática '{self.training_sign_name}' guardada!")
+                            self.on_training_mode = False
+                            delattr(self, 'training_sign_name')
                     
                     # Clasificación normal
                     else:
-                        sign_result = self.sign_classifier.classify_hand_landmarks(first_hand)
+                        sign_detected = False
                         
-                        # Notificar si se detectó una seña con suficiente confianza
-                        if (sign_result and sign_result['sign'] and 
-                            sign_result['confidence'] > 0.5 and 
-                            sign_result.get('stability') == 'estable'):
-                            
-                            if self.on_sign_detected:
-                                self.on_sign_detected(sign_result)
+                        # 1️⃣ Intentar primero clasificación DINÁMICA si está activada
+                        if self.use_movement_detection:
+                            try:
+                                dynamic_result = self._classify_dynamic_sign(first_hand.landmark)
+                                
+                                # Verificar que sea dict válido antes de usar
+                                if (dynamic_result is not None and 
+                                    isinstance(dynamic_result, dict) and 
+                                    dynamic_result.get('confidence', 0) > 0.65):
+                                    
+                                    # Seña dinámica detectada con alta confianza
+                                    if self.on_sign_detected:
+                                        self.on_sign_detected(dynamic_result)
+                                    sign_detected = True
+                            except Exception as e:
+                                # Si hay error en detección dinámica, continuar con estática
+                                pass
+                        
+                        # 2️⃣ Si no se detectó seña dinámica, intentar clasificación ESTÁTICA
+                        if not sign_detected:
+                            try:
+                                sign_result = self.sign_classifier.classify_hand_landmarks(first_hand)
+                                
+                                # Notificar si se detectó una seña con suficiente confianza
+                                if (sign_result and sign_result['sign'] and 
+                                    sign_result['confidence'] > 0.5 and 
+                                    sign_result.get('stability') == 'estable'):
+                                    
+                                    if self.on_sign_detected:
+                                        self.on_sign_detected(sign_result)
+                            except Exception as e:
+                                # Ignorar errores en clasificación estática
+                                pass
                 
                 # Dibujar landmarks si se detectan manos (solo si mediapipe está presente)
                 if results and getattr(results, 'multi_hand_landmarks', None) and self.mp_draw is not None and self.mp_hands is not None:

@@ -294,6 +294,9 @@ class SimpleTranslatorInterface:
                     while pygame.mixer.music.get_busy():
                         time.sleep(0.1)
                     
+                    # Cooldown para evitar saturación
+                    time.sleep(0.2)
+                    
                     # Limpiar archivo temporal
                     try:
                         os.unlink(temp_file)
