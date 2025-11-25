@@ -10,6 +10,7 @@ import time
 from sign_classifier import SignClassifier
 from movement_analyzer import MovementAnalyzer
 from dynamic_signs_dataset import DYNAMIC_SIGNS_PATTERNS, is_dynamic_sign
+from landmarks_3d_manager import Landmarks3DManager
 
 class HandDetector:
     """
@@ -18,12 +19,6 @@ class HandDetector:
     """
     
     def __init__(self, show_window=True):
-        """
-        Inicializa el detector de manos
-        
-        Args:
-            show_window (bool): Si True, muestra ventana de OpenCV. Si False, solo procesa en background.
-        """
         self.show_window = show_window
         # Configurar MediaPipe (si está disponible)
         if HAS_MEDIAPIPE and mp is not None:
@@ -59,6 +54,9 @@ class HandDetector:
         # Inicializar analizador de movimiento para señas dinámicas
         self.movement_analyzer = MovementAnalyzer(buffer_size=15, fps=30)
         self.use_movement_detection = True  # Activar detección de movimiento
+        
+        # Inicializar gestor de landmarks 3D
+        self.landmarks_3d_manager = Landmarks3DManager()
         
         # Callbacks para comunicación con la interfaz
         self.on_hand_detected = None
@@ -425,6 +423,7 @@ class HandDetector:
         self.on_training_mode = True
         self.dynamic_training_mode = True  # Modo dinámico
         self.dynamic_training_buffer = []  # Buffer para guardar características de movimiento
+        self.dynamic_training_landmarks_buffer = []  # Buffer para landmarks 3D
         self.dynamic_training_start_time = time.time()
         
         if self.on_status_update:
@@ -538,8 +537,10 @@ class HandDetector:
                 
                 # Procesar traducción de señas si está habilitada y MediaPipe devuelve landmarks
                 if self.translation_enabled and results and getattr(results, 'multi_hand_landmarks', None):
-                    # Tomar la primera mano detectada para clasificación
-                    first_hand = results.multi_hand_landmarks[0]
+                    # Detectar número de manos
+                    all_hands = results.multi_hand_landmarks
+                    num_hands = len(all_hands)
+                    first_hand = all_hands[0]
                     
                     # Modo entrenamiento
                     if self.on_training_mode and hasattr(self, 'training_sign_name'):
@@ -555,6 +556,11 @@ class HandDetector:
                                     self.dynamic_training_buffer = []
                                 self.dynamic_training_buffer.append(features)
                             
+                            # Guardar también landmarks 3D
+                            if not hasattr(self, 'dynamic_training_landmarks_buffer'):
+                                self.dynamic_training_landmarks_buffer = []
+                            self.dynamic_training_landmarks_buffer.append(first_hand.landmark)
+                            
                             # Verificar si ya pasaron 3 segundos
                             elapsed = time.time() - getattr(self, 'dynamic_training_start_time', time.time())
                             if elapsed >= 3.0:
@@ -564,6 +570,17 @@ class HandDetector:
                                         self.training_sign_name,
                                         self.dynamic_training_buffer
                                     )
+                                    
+                                    # Guardar también landmarks 3D
+                                    try:
+                                        self.landmarks_3d_manager.save_dynamic_sign(
+                                            self.training_sign_name,
+                                            self.dynamic_training_landmarks_buffer,
+                                            "Seña dinámica entrenada por usuario"
+                                        )
+                                    except Exception as e:
+                                        print(f"Error guardando landmarks 3D dinámicos: {e}")
+                                    
                                     if success and self.on_status_update:
                                         self.on_status_update(f"✓ Seña dinámica '{self.training_sign_name}' guardada!")
                                     elif self.on_status_update:
@@ -578,6 +595,8 @@ class HandDetector:
                                 delattr(self, 'training_sign_name')
                                 if hasattr(self, 'dynamic_training_buffer'):
                                     delattr(self, 'dynamic_training_buffer')
+                                if hasattr(self, 'dynamic_training_landmarks_buffer'):
+                                    delattr(self, 'dynamic_training_landmarks_buffer')
                         
                         else:
                             # ENTRENAMIENTO ESTÁTICO - Captura un solo frame
@@ -585,8 +604,32 @@ class HandDetector:
                                 self.training_sign_name, first_hand, 
                                 getattr(self, 'training_description', '')
                             )
-                            if success and self.on_status_update:
-                                self.on_status_update(f"✓ Seña estática '{self.training_sign_name}' guardada!")
+                            
+                            # También guardar landmarks 3D para animación (1 o 2 manos)
+                            try:
+                                if num_hands > 1:
+                                    # Seña con 2 manos
+                                    self.landmarks_3d_manager.save_static_sign(
+                                        self.training_sign_name,
+                                        all_hands,
+                                        getattr(self, 'training_description', '') + ' (2 manos)',
+                                        num_hands=2
+                                    )
+                                    if self.on_status_update:
+                                        self.on_status_update(f"✓ Seña estática con 2 manos '{self.training_sign_name}' guardada!")
+                                else:
+                                    # Seña con 1 mano
+                                    self.landmarks_3d_manager.save_static_sign(
+                                        self.training_sign_name,
+                                        first_hand.landmark,
+                                        getattr(self, 'training_description', ''),
+                                        num_hands=1
+                                    )
+                                    if success and self.on_status_update:
+                                        self.on_status_update(f"✓ Seña estática '{self.training_sign_name}' guardada!")
+                            except Exception as e:
+                                print(f"Error guardando landmarks 3D: {e}")
+                            
                             self.on_training_mode = False
                             delattr(self, 'training_sign_name')
                     
