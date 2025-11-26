@@ -6,7 +6,7 @@ import tempfile
 import os
 from gtts import gTTS
 from pygame import mixer
-from hand_detector import HandDetector
+from src.core.hand_detector import HandDetector
 
 class HandDetectionApp:
     def __init__(self, root):

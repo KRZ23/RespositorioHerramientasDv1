@@ -7,10 +7,10 @@ except Exception:
     HAS_MEDIAPIPE = False
 import threading
 import time
-from sign_classifier import SignClassifier
-from movement_analyzer import MovementAnalyzer
-from dynamic_signs_dataset import DYNAMIC_SIGNS_PATTERNS, is_dynamic_sign
-from landmarks_3d_manager import Landmarks3DManager
+from src.core.sign_classifier import SignClassifier
+from src.core.movement_analyzer import MovementAnalyzer
+from src.utils.dynamic_signs_dataset import DYNAMIC_SIGNS_PATTERNS, is_dynamic_sign
+from src.core.landmarks_3d_manager import Landmarks3DManager
 
 class HandDetector:
     """

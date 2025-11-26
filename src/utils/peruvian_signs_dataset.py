@@ -8,7 +8,7 @@ class PeruvianSignsDataset:
     Almacena patrones de características para reconocimiento.
     """
     
-    def __init__(self, dataset_file="signs_dataset.json"):
+    def __init__(self, dataset_file="data/signs_dataset.json"):
         """Inicializa el dataset de señas peruanas"""
         self.dataset_file = dataset_file
         self.signs_data = {}

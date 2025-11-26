@@ -12,7 +12,7 @@ from typing import List, Dict, Optional
 class Landmarks3DManager:
     """Gestiona el guardado y carga de landmarks 3D para animación"""
     
-    def __init__(self, dataset_file="landmarks_3d_dataset.json"):
+    def __init__(self, dataset_file="data/landmarks_3d_dataset.json"):
         self.dataset_file = dataset_file
         self.dataset = self._load_dataset()
     

@@ -22,7 +22,7 @@ import cv2
 import threading
 import time
 import queue
-from hand_detector import HandDetector
+from src.core.hand_detector import HandDetector
 from gtts import gTTS
 import pygame
 import tempfile

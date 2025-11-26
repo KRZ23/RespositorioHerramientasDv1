@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import numpy as np
-from landmarks_3d_manager import Landmarks3DManager, SignTo3DTranslator
+from src.core.landmarks_3d_manager import Landmarks3DManager, SignTo3DTranslator
 
 
 class RealisticHand3DVisualizer:

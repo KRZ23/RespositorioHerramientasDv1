@@ -1,214 +1,275 @@
-# 🤟 Traductor de Lenguaje de Señas Peruano
+# 🤟 Traductor de Lenguaje de Señas Peruano (LSP)
 
-¡Bienvenido al sistema de traducción de lenguaje de señas peruano en tiempo real!
+Sistema avanzado de traducción bidireccional de Lenguaje de Señas Peruano con visualización 3D realista.
 
-Este proyecto utiliza inteligencia artificial y visión por computadora para detectar y traducir señas de la mano en tiempo real, con un enfoque específico en el lenguaje de señas peruano.
+## ✨ Características Principales
 
-## 🌟 Características Principales
+- 🎥 **Detección en tiempo real** con MediaPipe (21 landmarks 3D por mano)
+- 🖐️ **Soporte para 1 o 2 manos** simultáneamente
+- 📝 **Traducción Texto → Señas** con animación 3D realista
+- 🎭 **Visualización 3D con superficies** usando mallas poligonales
+- 🗣️ **Síntesis de voz** con gTTS y pygame
+- 🎨 **Múltiples interfaces gráficas** con Tkinter
+- 💾 **Sistema de entrenamiento** para nuevas señas
 
-- ✨ **Detección en tiempo real**: Reconocimiento instantáneo de señas usando MediaPipe
-- 🧠 **IA Avanzada**: Múltiples algoritmos de clasificación (coseno, euclidiano, correlación)
-- 📚 **Señas preconfiguradas**: 10 señas básicas incluidas (HOLA, GRACIAS, SÍ, NO, etc.)
-- 🎯 **Entrenamiento personalizado**: Entrena el sistema con tus propias señas
-- 📊 **Sistema de confianza**: Muestra el nivel de certeza de cada traducción
-- 🔄 **Estabilidad temporal**: Suavizado de predicciones para mayor precisión
-- 🎨 **Interfaz moderna**: GUI intuitiva con indicadores visuales
-- 📜 **Historial de traducciones**: Almacena automáticamente las traducciones detectadas
-- 🔊 **Text-to-Speech**: Escucha las traducciones en voz alta (español)
-- 💾 **Exportación**: Guarda el historial de traducciones a archivo de texto
-
-## 🏗️ Arquitectura del Sistema
-
-### Componentes Principales
-
-1. **`sign_features.py`**: Extractor de características de landmarks de manos
-2. **`peruvian_signs_dataset.py`**: Dataset de señas peruanas con patrones básicos
-3. **`sign_classifier.py`**: Clasificador multicriteria con suavizado temporal
-4. **`hand_detector.py`**: Detector de manos integrado con MediaPipe
-5. **`main.py`**: Interfaz gráfica principal
-
-### Señas Incluidas
-
-| Seña | Descripción |
-|------|-------------|
-| HOLA | Mano abierta, movimiento de saludo |
-| GRACIAS | Mano hacia el pecho, dedos juntos |
-| SÍ | Puño cerrado, movimiento de asentimiento |
-| NO | Índice extendido, movimiento lateral |
-| BIEN | Pulgar arriba |
-| MAL | Pulgar hacia abajo |
-| AMOR | Índice y meñique extendidos |
-| PAZ | Índice y medio extendidos (V de victoria) |
-| AGUA | Mano formando copa |
-| COMIDA | Dedos juntos hacia la boca |
-
-## 🚀 Instalación y Uso
-
-### Método Rápido (Recomendado)
-
-```bash
-# Clonar el repositorio
-git clone <url-del-repo>
-cd RespositorioHerramientasDv1
-
-# Ejecutar script de inicio automático
-./start_translator.sh
-```
-
-### Método Manual
-
-```bash
-# 1. Crear entorno virtual
-python3 -m venv venv_translator
-source venv_translator/bin/activate
-
-# 2. Instalar dependencias
-pip install -r requirements.txt
-
-# 3. Ejecutar pruebas (opcional)
-python test_translator.py
-
-# 4. Iniciar aplicación
-python main.py
-```
-
-## 📋 Dependencias
-
-- **OpenCV**: Procesamiento de imágenes y video
-- **MediaPipe**: Detección de landmarks de manos
-- **NumPy**: Cálculos numéricos
-- **SciPy**: Algoritmos de similitud y estadística
-- **Tkinter**: Interfaz gráfica (incluido con Python)
-
-## 🎯 Cómo Usar
-
-### Detección Básica
-
-1. **Iniciar**: Presiona "▶️ Iniciar Detección"
-2. **Posicionar**: Coloca tu mano frente a la cámara
-3. **Traducir**: Las señas aparecerán en tiempo real
-4. **Confianza**: Observa el nivel de certeza (colores: verde=alta, amarillo=media, naranja=baja)
-
-### Entrenamiento de Nuevas Señas
-
-1. **Escribir**: Ingresa el nombre de la nueva seña
-2. **Entrenar**: Presiona "🎯 Entrenar"
-3. **Demostrar**: Haz la seña frente a la cámara por 2-3 segundos
-4. **Confirmar**: El sistema guardará automáticamente el patrón
-
-### Controles Disponibles
-
-- **▶️ Iniciar/Parar Detección**: Controla la cámara
-- **🇪🇸 Traducción ON/OFF**: Activa/desactiva el clasificador
-- **🎯 Entrenar**: Añade nuevas señas al sistema
-
-## 📊 Características Técnicas
-
-### Extractor de Características (17 dimensiones)
-
-- **Distancias**: 5 distancias desde muñeca a cada dedo
-- **Ángulos**: 4 ángulos entre dedos adyacentes
-- **Flexión**: 5 ratios de extensión de dedos
-- **Orientación**: 2 componentes de orientación (sin/cos)
-- **Apertura**: 1 medida de apertura general de la mano
-
-### Algoritmos de Clasificación
-
-1. **Similitud Coseno**: Comparación de vectores normalizados
-2. **Distancia Euclidiana**: Distancia geométrica en espacio de características
-3. **Correlación de Pearson**: Correlación lineal entre patrones
-4. **Patrones Básicos**: Coincidencia directa con reglas heurísticas
-
-### Sistema de Estabilidad
-
-- **Historial**: 5 predicciones recientes
-- **Consenso**: 3 predicciones consistentes para confirmación
-- **Suavizado**: Promediado de confianza temporal
-
-## 🔬 Pruebas y Validación
-
-```bash
-# Ejecutar suite completa de pruebas
-python test_translator.py
-
-# Probar solo un componente
-python -c "from test_translator import test_classifier; test_classifier()"
-```
-
-## 📁 Estructura del Proyecto
+## 🏗️ Estructura del Proyecto
 
 ```
 RespositorioHerramientasDv1/
-├── 📄 main.py                    # Interfaz principal
-├── 🤖 hand_detector.py          # Detector de manos
-├── 🔍 sign_classifier.py        # Clasificador de señas
-├── 📊 sign_features.py          # Extractor de características
-├── 📚 peruvian_signs_dataset.py # Dataset de señas
-├── 🧪 test_translator.py        # Suite de pruebas
-├── 🚀 start_translator.sh       # Script de inicio
-├── 📋 requirements.txt          # Dependencias
-├── 📖 README.md                 # Este archivo
-├── 🗂️ venv_translator/          # Entorno virtual
-└── 📄 signs_dataset.json        # Dataset persistente (generado)
+├── src/                          # Código fuente principal
+│   ├── core/                     # Módulos principales
+│   │   ├── hand_detector.py      # Detección de manos con MediaPipe
+│   │   ├── sign_classifier.py    # Clasificación de señas
+│   │   ├── landmarks_3d_manager.py # Gestión de landmarks 3D
+│   │   ├── movement_analyzer.py  # Análisis de movimientos
+│   │   └── sign_features.py      # Extracción de características
+│   ├── visualizers/              # Visualizadores 3D
+│   │   ├── realistic_hand_visualizer.py  # Renderizado realista con mallas
+│   │   └── hand_3d_visualizer.py         # Visualización con líneas
+│   ├── interfaces/               # Interfaces gráficas
+│   │   ├── text_to_sign_interface.py  # GUI Texto → Señas
+│   │   ├── simple_interface.py        # GUI simplificada
+│   │   └── main.py                    # Interfaz principal
+│   └── utils/                    # Utilidades y datasets
+│       ├── dynamic_signs_dataset.py   # Dataset de señas dinámicas
+│       └── peruvian_signs_dataset.py  # Dataset de señas estáticas
+├── data/                         # Datos y datasets
+│   ├── signs_dataset.json        # Dataset de características
+│   └── landmarks_3d_dataset.json # Dataset de landmarks 3D
+├── tests/                        # Tests unitarios
+│   ├── test_3d_translation.py    # Tests del sistema 3D
+│   └── test_translator.py        # Tests del traductor
+├── scripts/                      # Scripts auxiliares
+│   ├── migrate_to_3d.py          # Migración a formato 3D
+│   ├── demo_3d_system.py         # Demo del sistema
+│   └── start_3d_translator.sh    # Script de inicio
+├── docs/                         # Documentación
+│   ├── README_3D_TRANSLATION.md  # Doc del sistema 3D
+│   ├── INSTALACION.md            # Guía de instalación
+│   └── CHANGELOG.md              # Registro de cambios
+├── requirements.txt              # Dependencias Python
+└── README.md                     # Este archivo
+
 ```
 
-## 🛠️ Desarrollo y Contribución
+## 🚀 Instalación Rápida
 
-### Añadir Nuevas Señas Básicas
+### 1. Clonar el repositorio
 
-Edita `peruvian_signs_dataset.py` en la sección `_initialize_basic_signs()`:
+```bash
+git clone https://github.com/KRZ23/RespositorioHerramientasDv1.git
+cd RespositorioHerramientasDv1
+```
+
+### 2. Crear entorno virtual
+
+```bash
+python3 -m venv venv_translator
+source venv_translator/bin/activate  # Linux/Mac
+# o en Windows: venv_translator\Scripts\activate
+```
+
+### 3. Instalar dependencias
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Ejecutar la interfaz principal
+
+```bash
+# Interfaz Texto → Señas 3D
+python -m src.interfaces.text_to_sign_interface
+
+# O interfaz completa con detección
+python -m src.interfaces.main
+```
+
+## 📋 Dependencias Principales
+
+- **Python** >= 3.8
+- **OpenCV** >= 4.10.0 - Procesamiento de video
+- **MediaPipe** >= 0.10.14 - Detección de landmarks
+- **NumPy** >= 1.26.4 - Operaciones matemáticas
+- **Matplotlib** >= 3.7.0 - Visualización 3D
+- **Tkinter** - Interfaces gráficas (incluido con Python)
+- **gTTS** - Síntesis de voz
+- **pygame** - Reproducción de audio
+
+## 🎯 Uso del Sistema
+
+### Modo 1: Traducción Texto → Señas 3D
 
 ```python
-"NUEVA_SEÑA": {
+from src.interfaces.text_to_sign_interface import TextToSignTranslator
+
+# Iniciar interfaz
+app = TextToSignTranslator()
+app.mainloop()
+```
+
+**Características:**
+- Escribe texto en español
+- Visualización 3D realista con mallas poligonales
+- Animación suave con interpolación
+- Soporte para múltiples señas en secuencia
+
+### Modo 2: Detección en Tiempo Real
+
+```python
+from src.interfaces.simple_interface import SimpleTranslatorInterface
+
+# Iniciar interfaz
+app = SimpleTranslatorInterface()
+app.mainloop()
+```
+
+**Características:**
+- Detección en tiempo real con cámara
+- Clasificación automática de señas
+- Síntesis de voz de las señas detectadas
+- Modo entrenamiento para nuevas señas
+
+### Modo 3: Entrenamiento de Señas
+
+```python
+from src.core.hand_detector import HandDetector
+
+detector = HandDetector()
+detector.train_sign("NUEVA_SEÑA", is_static=True, num_samples=5)
+```
+
+## 🎨 Sistema de Visualización 3D
+
+### Visualizador Realista
+
+El `RealisticHand3DVisualizer` crea manos 3D con superficies sólidas:
+
+```python
+from src.visualizers.realistic_hand_visualizer import RealisticHand3DVisualizer
+
+visualizer = RealisticHand3DVisualizer(figsize=(10, 8))
+visualizer.draw_realistic_hand(landmarks_3d, hand_color='skin')
+```
+
+**Características técnicas:**
+- Mallas cilíndricas para dedos (8 segmentos)
+- Palma triangulada con Poly3DCollection
+- Colores personalizables: 'skin', 'blue', 'lightblue'
+- Transparencia alpha=0.8 para profundidad
+- Bordes con edgecolor='#8B7355'
+
+## 📊 Dataset de Señas
+
+### Señas Disponibles (13 señas migradas a 3D)
+
+**Estáticas:**
+- HOLA, OKEY, SILENCIO, DESPIERTO
+
+**Dinámicas:**
+- LUSER, BARRER, LLAMAME, FLOJO, ABRAZO, TE VEO, BESAR, LLORAR, CONFEZAR
+
+### Estructura del Dataset
+
+```json
+{
+  "NOMBRE_SEÑA": {
+    "type": "static" | "dynamic",
     "description": "Descripción de la seña",
-    "pattern": {
-        "fingers_extended": [True, False, True, False, True],
-        "hand_openness": 0.6,
-        "confidence_threshold": 0.7
-    }
+    "frames": [[[x,y,z], ...21 puntos], ...],
+    "num_hands": 1 | 2,
+    "count": 1,
+    "frame_count": N,
+    "fps": 30
+  }
 }
 ```
 
-### Mejorar Algoritmos
+## 🔧 Arquitectura del Sistema
 
-- **Características**: Modifica `SignFeatureExtractor` en `sign_features.py`
-- **Clasificación**: Añade nuevas métricas en `SignClassifier`
-- **Dataset**: Expande patrones en `PeruvianSignsDataset`
+### Flujo de Datos
 
-## 🎨 Personalización
-
-### Configuración de Confianza
-
-```python
-# Ajustar umbral de confianza
-classifier = SignClassifier(confidence_threshold=0.8)  # Más estricto
+```
+ENTRADA (Texto o Video)
+    ↓
+[HandDetector] → Captura landmarks con MediaPipe
+    ↓
+[SignClassifier] → Clasifica características
+    ↓
+[Landmarks3DManager] → Gestiona landmarks 3D
+    ↓
+[RealisticHand3DVisualizer] → Renderiza mallas 3D
+    ↓
+SALIDA (Visualización 3D o Clasificación)
 ```
 
-### Configuración de Estabilidad
+### Componentes Principales
 
-```python
-# Modificar en SignClassifier.__init__()
-self.history_size = 10      # Más historial
-self.stable_frames = 5      # Más frames para estabilidad
+1. **Core (`src/core/`)**
+   - `HandDetector`: Detección con MediaPipe
+   - `SignClassifier`: Clasificación con múltiples métricas
+   - `Landmarks3DManager`: Gestión de datos 3D
+   - `MovementAnalyzer`: Análisis de movimientos dinámicos
+
+2. **Visualizers (`src/visualizers/`)**
+   - `RealisticHand3DVisualizer`: Renderizado con Poly3DCollection
+   - `Hand3DVisualizer`: Visualización con líneas coloreadas
+
+3. **Interfaces (`src/interfaces/`)**
+   - `TextToSignInterface`: GUI Texto → Señas
+   - `SimpleInterface`: GUI detección en tiempo real
+   - `main`: Interfaz principal completa
+
+## 📚 Documentación Adicional
+
+- [Instalación Detallada](docs/INSTALACION.md)
+- [Sistema 3D](docs/README_3D_TRANSLATION.md)
+- [Integración Completa](docs/INTEGRACION_COMPLETA.md)
+- [Changelog](docs/CHANGELOG.md)
+
+## 🧪 Tests
+
+```bash
+# Test del sistema 3D
+python -m tests.test_3d_translation
+
+# Test del traductor
+python -m tests.test_translator
+
+# Test de instalación
+python -m tests.test_instalacion
 ```
 
-## 🤝 Créditos
+## 🤝 Contribuciones
 
-- **MediaPipe**: Google - Framework de ML para detección de manos
-- **OpenCV**: Biblioteca de visión por computadora
-- **SciPy**: Comunidad científica de Python
+Las contribuciones son bienvenidas. Por favor:
 
-## 📞 Soporte
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add: AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
 
-¿Problemas o preguntas?
+## 📝 Licencia
 
-1. **Ejecutar pruebas**: `python test_translator.py`
-2. **Verificar cámara**: Asegúrate de que funcione con otras apps
-3. **Revisar logs**: Observa los mensajes en la interfaz
-4. **Reinstalar**: `rm -rf venv_translator && ./start_translator.sh`
+Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+## 👨‍💻 Autor
+
+**Cristopher Rivera** - [@KRZ23](https://github.com/KRZ23)
+
+## 🙏 Agradecimientos
+
+- **MediaPipe** por la tecnología de detección de manos
+- **OpenCV** por el procesamiento de video
+- **Matplotlib** por las capacidades de visualización 3D
+- Comunidad de Lenguaje de Señas Peruano
+
+## 📧 Contacto
+
+Para preguntas o sugerencias, abre un issue en el repositorio.
 
 ---
 
-🇵🇪 **Hecho con ❤️ para la comunidad peruana sorda**
-
-> *"La tecnología debe ser accesible para todos"*
+**Versión:** 2.1.0  
+**Última actualización:** Noviembre 2025

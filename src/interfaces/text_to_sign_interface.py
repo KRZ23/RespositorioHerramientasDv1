@@ -10,9 +10,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
-from landmarks_3d_manager import Landmarks3DManager, SignTo3DTranslator
-from hand_3d_visualizer import Hand3DVisualizer
-from realistic_hand_visualizer import RealisticHand3DVisualizer
+from src.core.landmarks_3d_manager import Landmarks3DManager, SignTo3DTranslator
+from src.visualizers.hand_3d_visualizer import Hand3DVisualizer
+from src.visualizers.realistic_hand_visualizer import RealisticHand3DVisualizer
 
 
 class TextToSignTranslator(tk.Tk):

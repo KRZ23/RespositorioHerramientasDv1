@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.spatial.distance import cosine, euclidean
 from scipy.stats import pearsonr
-from sign_features import SignFeatureExtractor
-from peruvian_signs_dataset import PeruvianSignsDataset
+from src.core.sign_features import SignFeatureExtractor
+from src.utils.peruvian_signs_dataset import PeruvianSignsDataset
 import time
 
 class SignClassifier:
