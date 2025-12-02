@@ -82,6 +82,12 @@ show_menu() {
     echo -e "${WHITE}║  ${BLUE}9)${NC} 📚  Abrir Documentación                              ${WHITE}║${NC}"
     echo -e "${WHITE}║      ${CYAN}→ Ver README y guías${NC}                                ${WHITE}║${NC}"
     echo -e "${WHITE}║                                                            ║${NC}"
+    echo -e "${WHITE}║  ${GREEN}A)${NC} 🎙️  Configurar TTS con IA                          ${WHITE}║${NC}"
+    echo -e "${WHITE}║      ${CYAN}→ Instalar motores de voz (sin entrecortes)${NC}        ${WHITE}║${NC}"
+    echo -e "${WHITE}║                                                            ║${NC}"
+    echo -e "${WHITE}║  ${GREEN}B)${NC} ⚡  Pre-generar Audio de Señas                      ${WHITE}║${NC}"
+    echo -e "${WHITE}║      ${CYAN}→ Cachear todas las voces para reproducción instantánea${NC}${WHITE}║${NC}"
+    echo -e "${WHITE}║                                                            ║${NC}"
     echo -e "${WHITE}║  ${RED}0)${NC} 🚪  Salir                                            ${WHITE}║${NC}"
     echo -e "${WHITE}║                                                            ║${NC}"
     echo -e "${WHITE}╚════════════════════════════════════════════════════════════╝${NC}"
@@ -298,7 +304,8 @@ show_docs() {
     echo "2) Guía de instalación"
     echo "3) Sistema 3D"
     echo "4) Changelog"
-    echo "5) Abrir carpeta docs/"
+    echo "5) TTS sin entrecortes (NUEVO)"
+    echo "6) Abrir carpeta docs/"
     echo ""
     read -p "Selecciona opción: " doc_opt
     
@@ -307,10 +314,57 @@ show_docs() {
         2) xdg-open docs/INSTALACION.md & ;;
         3) xdg-open docs/README_3D_TRANSLATION.md & ;;
         4) xdg-open docs/CHANGELOG.md & ;;
-        5) xdg-open docs/ & ;;
+        5) xdg-open docs/TTS_IA_SIN_ENTRECORTES.md & ;;
+        6) xdg-open docs/ & ;;
     esac
     
     sleep 1
+}
+
+# Función A: Configurar TTS
+setup_tts() {
+    echo -e "${GREEN}🎙️ Configuración de TTS con IA${NC}"
+    echo ""
+    echo -e "${CYAN}Este asistente te ayudará a instalar motores TTS avanzados${NC}"
+    echo -e "${CYAN}para eliminar entrecortes en la reproducción de voz.${NC}"
+    echo ""
+    read -p "Presiona ENTER para continuar..."
+    
+    activate_venv
+    ./scripts/setup_tts.sh
+    
+    read -p "Presiona ENTER para volver..."
+}
+
+# Función B: Pre-generar Audio
+pregenerate_audio() {
+    echo -e "${GREEN}⚡ Pre-generación de Audio${NC}"
+    echo ""
+    echo -e "${CYAN}Este proceso generará y cacheará el audio de todas las señas${NC}"
+    echo -e "${CYAN}para reproducción instantánea sin entrecortes.${NC}"
+    echo ""
+    
+    # Verificar si el caché ya existe
+    if [ -d "audio_cache" ] && [ "$(ls -A audio_cache/*.mp3 2>/dev/null | wc -l)" -gt 0 ]; then
+        echo -e "${YELLOW}⚠️  Ya existen archivos de audio en caché${NC}"
+        read -p "¿Regenerar todo? (s/n) [n]: " regenerate
+        if [ "$regenerate" = "s" ] || [ "$regenerate" = "S" ]; then
+            echo -e "${BLUE}🗑️  Limpiando caché anterior...${NC}"
+            rm -rf audio_cache/
+        else
+            echo -e "${BLUE}Usando caché existente${NC}"
+            read -p "Presiona ENTER para volver..."
+            return
+        fi
+    fi
+    
+    activate_venv
+    python scripts/pregenerate_audio.py
+    
+    echo ""
+    echo -e "${GREEN}✅ Pre-generación completada${NC}"
+    echo ""
+    read -p "Presiona ENTER para volver..."
 }
 
 # Loop principal
@@ -321,7 +375,7 @@ main() {
         show_banner
         show_menu
         
-        read -p "$(echo -e ${YELLOW}Selecciona una opción [0-9]: ${NC})" option
+        read -p "$(echo -e ${YELLOW}Selecciona una opción [0-9/A-B]: ${NC})" option
         
         case $option in
             1) run_main_interface ;;
@@ -333,6 +387,8 @@ main() {
             7) run_docker ;;
             8) run_tests ;;
             9) show_docs ;;
+            A|a) setup_tts ;;
+            B|b) pregenerate_audio ;;
             0)
                 echo ""
                 echo -e "${GREEN}👋 ¡Hasta luego!${NC}"

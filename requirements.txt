@@ -10,5 +10,11 @@ jax==0.4.23
 jaxlib==0.4.23
 matplotlib>=3.7.0
 
+# TTS con IA (opcionales - instalar según necesidad)
+edge-tts>=6.1.0  # Recomendado: Microsoft Edge TTS (gratis, alta calidad)
+# pyttsx3>=2.90  # TTS offline con voces del sistema
+# TTS>=0.22.0  # Coqui TTS (IA local, open source)
+# elevenlabs>=0.2.0  # ElevenLabs (premium, máxima calidad)
+
 # Dependencias opcionales:
 # - Ninguna dependencia del sistema requerida (todo funciona offline después de primera síntesis)

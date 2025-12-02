@@ -1,0 +1,87 @@
+{
+  "482bd2ab94658bb402cee5a2bf0a7094": {
+    "text": "HOLA",
+    "voice_id": "default",
+    "file": "482bd2ab94658bb402cee5a2bf0a7094.mp3"
+  },
+  "9a435bf9b8811ab0568870fa6f95d0b7": {
+    "text": "OKEY",
+    "voice_id": "default",
+    "file": "9a435bf9b8811ab0568870fa6f95d0b7.mp3"
+  },
+  "77d320fa68a9b77ae5ce894859362a04": {
+    "text": "SILENCIO",
+    "voice_id": "default",
+    "file": "77d320fa68a9b77ae5ce894859362a04.mp3"
+  },
+  "131de5e02ead9b286671f2904c5a6292": {
+    "text": "LUSER",
+    "voice_id": "default",
+    "file": "131de5e02ead9b286671f2904c5a6292.mp3"
+  },
+  "cc1bbb5241fa234b6826cc5dbd35b3a7": {
+    "text": "BARRER",
+    "voice_id": "default",
+    "file": "cc1bbb5241fa234b6826cc5dbd35b3a7.mp3"
+  },
+  "ee56df86a6391b15d6dd7959d95019d9": {
+    "text": "LLAMAME",
+    "voice_id": "default",
+    "file": "ee56df86a6391b15d6dd7959d95019d9.mp3"
+  },
+  "ae53558e5a5f81c3484ce3072c19a7fc": {
+    "text": "FLOJO",
+    "voice_id": "default",
+    "file": "ae53558e5a5f81c3484ce3072c19a7fc.mp3"
+  },
+  "f25943b94f5d41bb8149bc28e01aa670": {
+    "text": "ABRAZO",
+    "voice_id": "default",
+    "file": "f25943b94f5d41bb8149bc28e01aa670.mp3"
+  },
+  "f28bb3fb01512767ccfef3e2592343f6": {
+    "text": "TE VEO",
+    "voice_id": "default",
+    "file": "f28bb3fb01512767ccfef3e2592343f6.mp3"
+  },
+  "f11b88990ba382deee043827419b3cf4": {
+    "text": "BESAR",
+    "voice_id": "default",
+    "file": "f11b88990ba382deee043827419b3cf4.mp3"
+  },
+  "02232dc183429528fd202164c2b3ffeb": {
+    "text": "LLORAR",
+    "voice_id": "default",
+    "file": "02232dc183429528fd202164c2b3ffeb.mp3"
+  },
+  "d4ceaa77d94c2bfdac9eceef219bac9f": {
+    "text": "DESPIERTO",
+    "voice_id": "default",
+    "file": "d4ceaa77d94c2bfdac9eceef219bac9f.mp3"
+  },
+  "fb5522c3eb457d2cb2d343c47f0a0a7f": {
+    "text": "CONFEZAR",
+    "voice_id": "default",
+    "file": "fb5522c3eb457d2cb2d343c47f0a0a7f.mp3"
+  },
+  "847030a8f5cd74104a795b72d5e0862f": {
+    "text": "SILENCIO SILENCIO DESPIERTO LLORAR OKEY HOLA ABRAZO SILENCIO SILENCIO SILENCIO ABRAZO HOLA HOLA SILENCIO SILENCIO BARRER FLOJO FLOJO FLOJO DESPIERTO OKEY DESPIERTO OKEY ABRAZO BARRER ABRAZO BARRER ABRAZO BARRER BESAR BESAR BESAR BESAR HOLA ABRAZO ABRAZO ABRAZO ABRAZO ABRAZO OKEY OKEY HOLA HOLA CONFEZAR HOLA CONFEZAR CONFEZAR CONFEZAR HOLA HOLA ABRAZO ABRAZO ABRAZO DESPIERTO DESPIERTO DESPIERTO DESPIERTO ABRAZO ABRAZO ABRAZO ABRAZO CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR",
+    "voice_id": "default",
+    "file": "847030a8f5cd74104a795b72d5e0862f.mp3"
+  },
+  "10f0314e940bcd61c5f99e09050f2f39": {
+    "text": "BESAR HOLA ABRAZO ABRAZO ABRAZO ABRAZO ABRAZO OKEY OKEY HOLA HOLA CONFEZAR HOLA CONFEZAR CONFEZAR CONFEZAR HOLA HOLA ABRAZO ABRAZO ABRAZO DESPIERTO DESPIERTO DESPIERTO DESPIERTO ABRAZO ABRAZO ABRAZO ABRAZO CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR CONFEZAR LLORAR HOLA SILENCIO SILENCIO LLORAR LLORAR BESAR BESAR LLORAR LLORAR LLORAR BESAR BESAR BESAR HOLA ABRAZO ABRAZO BESAR OKEY OKEY BARRER BARRER BARRER BARRER HOLA BARRER BARRER SILENCIO BARRER LLORAR LLORAR HOLA ABRAZO HOLA ABRAZO ABRAZO BARRER BARRER BARRER BARRER HOLA TE VEO BARRER BARRER LLORAR LLORAR BARRER OKEY OKEY TE VEO TE VEO TE VEO BESAR",
+    "voice_id": "default",
+    "file": "10f0314e940bcd61c5f99e09050f2f39.mp3"
+  },
+  "9c220fb6fc7c4706ea489ab9629861bd": {
+    "text": "MI NOMBRE ES",
+    "voice_id": "default",
+    "file": "9c220fb6fc7c4706ea489ab9629861bd.mp3"
+  },
+  "57a95e3ac1ed2ca1647ed22758ca25f1": {
+    "text": "CRIS",
+    "voice_id": "default",
+    "file": "57a95e3ac1ed2ca1647ed22758ca25f1.mp3"
+  }
+}

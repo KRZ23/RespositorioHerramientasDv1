@@ -125,6 +125,42 @@ DYNAMIC_SIGNS_PATTERNS = {
             'hand_openness': 0.6
         }
     },
+    'MI NOMBRE ES': {
+        'movement_pattern': 'CIRCULAR',
+        'direction': '[8.77206998e-01 4.80109085e-01 2.90962655e-07]',
+        'frequency_range': (0, 0),
+        'avg_speed_range': (0.0856204557359962, 0.5927923203147581),
+        'trajectory_length_range': (0.026002672768698075, 0.9516324643609801),
+        'hand_shape': {
+            'fingers_extended': [True, True, True, True, True],
+            'hand_openness': 0.6
+        }
+    },
+    'MI NOMBRE ES': {
+        'movement_pattern': 'LINEAL',
+        'direction': '[-9.83101856e-01 -1.83054222e-01  1.19670916e-07]',
+        'frequency_range': (0, 0),
+        'avg_speed_range': (0.15414657350786323, 2.3377711974723296),
+        'trajectory_length_range': (0.08869857566022249, 0.9906229966018254),
+        'hand_shape': {
+            'fingers_extended': [True, True, True, True, True],
+            'hand_openness': 0.6
+        }
+    },
+    'CRIS': {
+        'movement_pattern': 'CIRCULAR',
+        'direction': '[-3.23600842e-01  9.46190413e-01  3.84989666e-07]',
+        'frequency_range': (0, 0),
+        'avg_speed_range': (0.059371290925506234, 0.3795029429260622),
+        'trajectory_length_range': (0.1552439366596982, 0.4683124980215589),
+        'hand_shape': {
+            'fingers_extended': [True, True, True, True, True],
+            'hand_openness': 0.6
+        }
+    },
+
+
+
 
     
     'LENTO': {

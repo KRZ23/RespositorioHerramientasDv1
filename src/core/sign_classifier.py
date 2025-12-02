@@ -22,10 +22,10 @@ class SignClassifier:
         self.dataset = PeruvianSignsDataset()
         self.confidence_threshold = confidence_threshold
         
-        # Historial para suavizado temporal
+        # Historial para suavizado temporal (ajustado para mejor respuesta)
         self.prediction_history = []
-        self.history_size = 5
-        self.stable_frames = 3  # Frames consistentes para confirmar una seña
+        self.history_size = 7  # Aumentado para mejor suavizado
+        self.stable_frames = 2  # Reducido: confirma más rápido
         
         # Métricas de clasificación
         self.classification_metrics = {
@@ -35,12 +35,12 @@ class SignClassifier:
             'basic_pattern': self._basic_pattern_match
         }
         
-        # Pesos para combinar diferentes métricas
+        # Pesos para combinar diferentes métricas (ajustados para dataset pequeño)
         self.metric_weights = {
-            'cosine': 0.3,
-            'euclidean': 0.2,
-            'correlation': 0.2,
-            'basic_pattern': 0.3
+            'cosine': 0.35,      # Más peso: bueno para señas similares
+            'euclidean': 0.25,   # Aumentado: detecta diferencias absolutas
+            'correlation': 0.15, # Reducido: menos útil con pocas muestras
+            'basic_pattern': 0.25 # Reducido: menos confiable con 1 muestra
         }
     
     def classify_hand_landmarks(self, hand_landmarks):

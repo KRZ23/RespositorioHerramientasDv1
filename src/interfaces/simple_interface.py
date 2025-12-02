@@ -23,7 +23,7 @@ import threading
 import time
 import queue
 from src.core.hand_detector import HandDetector
-from gtts import gTTS
+from src.utils.smart_tts import SmartTTS
 import pygame
 import tempfile
 
@@ -48,6 +48,9 @@ class SimpleTranslatorInterface:
         
         # Inicializar pygame para audio
         pygame.mixer.init()
+        
+        # Inicializar SmartTTS (con caché para evitar entrecortes)
+        self.tts = SmartTTS(engine="edge-tts", cache_dir="audio_cache")
         
         # Inicializar detector de manos SIN ventana de OpenCV
         self.hand_detector = HandDetector(show_window=False)
@@ -271,7 +274,7 @@ class SimpleTranslatorInterface:
         )
     
     def _tts_worker(self):
-        """Worker thread para TTS (NUEVO ENFOQUE - sin bloqueos)"""
+        """Worker thread para TTS con SmartTTS (sin entrecortes)"""
         while True:
             try:
                 # Esperar por texto para hablar (bloqueante pero en thread separado)
@@ -280,28 +283,13 @@ class SimpleTranslatorInterface:
                 if text is None:  # Señal de parada
                     break
                 
-                # Generar y reproducir audio
+                # Usar SmartTTS con caché (primera vez genera, luego usa caché)
                 try:
-                    tts = gTTS(text=text, lang='es', slow=False)
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
-                        temp_file = fp.name
-                        tts.save(temp_file)
+                    # speak_and_play: genera audio si no existe, lo cachea y reproduce
+                    self.tts.speak_and_play(text)
                     
-                    pygame.mixer.music.load(temp_file)
-                    pygame.mixer.music.play()
-                    
-                    # Esperar a que termine (pero en thread separado, no bloquea UI)
-                    while pygame.mixer.music.get_busy():
-                        time.sleep(0.1)
-                    
-                    # Cooldown para evitar saturación
-                    time.sleep(0.2)
-                    
-                    # Limpiar archivo temporal
-                    try:
-                        os.unlink(temp_file)
-                    except:
-                        pass
+                    # Cooldown mínimo entre reproducciones
+                    time.sleep(0.1)
                         
                 except Exception as e:
                     print(f"Error en TTS: {e}")

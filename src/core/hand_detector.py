@@ -47,8 +47,8 @@ class HandDetector:
         self.detection_thread = None
         self.window_created = False
         
-        # Inicializar clasificador de señas
-        self.sign_classifier = SignClassifier(confidence_threshold=0.6)
+        # Inicializar clasificador de señas (umbral reducido para mejor detección)
+        self.sign_classifier = SignClassifier(confidence_threshold=0.35)
         self.translation_enabled = True
         
         # Inicializar analizador de movimiento para señas dinámicas
@@ -464,7 +464,7 @@ class HandDetector:
             }
             
             # Cargar dataset existente
-            dataset_file = 'dynamic_signs_dataset.py'
+            dataset_file = 'src/utils/dynamic_signs_dataset.py'
             with open(dataset_file, 'r', encoding='utf-8') as f:
                 content = f.read()
             
@@ -547,25 +547,37 @@ class HandDetector:
                         
                         # Verificar si es entrenamiento dinámico
                         if getattr(self, 'dynamic_training_mode', False):
-                            # ENTRENAMIENTO DINÁMICO - Capturar movimiento durante 2-3 segundos
+                            # ENTRENAMIENTO DINÁMICO - Capturar movimiento durante 4 segundos
                             self.movement_analyzer.add_frame(first_hand.landmark)
-                            features = self.movement_analyzer.get_movement_features()
                             
-                            if features:
-                                if not hasattr(self, 'dynamic_training_buffer'):
-                                    self.dynamic_training_buffer = []
-                                self.dynamic_training_buffer.append(features)
-                            
-                            # Guardar también landmarks 3D
+                            # Inicializar buffers si no existen
+                            if not hasattr(self, 'dynamic_training_buffer'):
+                                self.dynamic_training_buffer = []
                             if not hasattr(self, 'dynamic_training_landmarks_buffer'):
                                 self.dynamic_training_landmarks_buffer = []
+                            
+                            # Siempre guardar landmarks 3D (no depender de features)
                             self.dynamic_training_landmarks_buffer.append(first_hand.landmark)
                             
-                            # Verificar si ya pasaron 3 segundos
+                            # Intentar extraer features (puede ser None en los primeros frames)
+                            features = self.movement_analyzer.get_movement_features()
+                            if features:
+                                self.dynamic_training_buffer.append(features)
+                            
+                            # Mostrar progreso cada 0.5 segundos
                             elapsed = time.time() - getattr(self, 'dynamic_training_start_time', time.time())
-                            if elapsed >= 3.0:
+                            if not hasattr(self, 'last_progress_update'):
+                                self.last_progress_update = 0
+                            if elapsed - self.last_progress_update >= 0.5:
+                                self.last_progress_update = elapsed
+                                frames_captured = len(self.dynamic_training_buffer)
+                                if self.on_status_update:
+                                    self.on_status_update(f"📊 Capturando... {frames_captured} frames - {elapsed:.1f}s / 4.0s")
+                            
+                            # Verificar si ya pasaron 4 segundos
+                            if elapsed >= 4.0:
                                 # Guardar patrón capturado
-                                if len(self.dynamic_training_buffer) > 10:
+                                if len(self.dynamic_training_buffer) >= 5:
                                     success = self._save_dynamic_pattern(
                                         self.training_sign_name,
                                         self.dynamic_training_buffer
@@ -587,7 +599,8 @@ class HandDetector:
                                         self.on_status_update(f"✗ Error guardando '{self.training_sign_name}'")
                                 else:
                                     if self.on_status_update:
-                                        self.on_status_update("✗ No se capturó suficiente movimiento")
+                                        captured = len(self.dynamic_training_buffer)
+                                        self.on_status_update(f"✗ Solo se capturaron {captured} frames (mínimo 5). Mueve la mano más!")
                                 
                                 # Limpiar variables
                                 self.on_training_mode = False
@@ -597,6 +610,8 @@ class HandDetector:
                                     delattr(self, 'dynamic_training_buffer')
                                 if hasattr(self, 'dynamic_training_landmarks_buffer'):
                                     delattr(self, 'dynamic_training_landmarks_buffer')
+                                if hasattr(self, 'last_progress_update'):
+                                    delattr(self, 'last_progress_update')
                         
                         else:
                             # ENTRENAMIENTO ESTÁTICO - Captura un solo frame

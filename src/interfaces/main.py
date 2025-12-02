@@ -4,9 +4,9 @@ import time
 import threading
 import tempfile
 import os
-from gtts import gTTS
 from pygame import mixer
 from src.core.hand_detector import HandDetector
+from src.utils.smart_tts import SmartTTS
 
 class HandDetectionApp:
     def __init__(self, root):
@@ -38,13 +38,14 @@ class HandDetectionApp:
         self.last_sign_time = 0
         self.sign_cooldown = 2.0  # Segundos de espera antes de detectar la misma seña otra vez
         
-        # 🆕 Inicializar motor de Text-to-Speech (gTTS + pygame)
+        # 🆕 Inicializar motor de Text-to-Speech con SmartTTS (sin entrecortes)
         try:
             # Inicializar pygame mixer para reproducción de audio
             mixer.init()
+            # Inicializar SmartTTS con caché
+            self.tts = SmartTTS(engine="edge-tts", cache_dir="audio_cache")
             self.tts_available = True
-            self.tts_temp_files = []  # Lista para limpiar archivos temporales
-            print("✅ TTS inicializado correctamente (gTTS + pygame)")
+            print("✅ SmartTTS inicializado correctamente (sin entrecortes)")
         except Exception as e:
             self.tts_available = False
             print(f"⚠️ TTS no disponible: {e}")
@@ -528,7 +529,8 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
             # Entrenamiento de seña dinámica (nuevo)
             self.hand_detector.start_dynamic_training(sign_name)
             self.update_text(f"🔄 Modo DINÁMICO activado para '{sign_name}'")
-            self.update_text(f"🎯 Realiza el MOVIMIENTO de la seña durante 2-3 segundos...")
+            self.update_text(f"🎯 Realiza el MOVIMIENTO de la seña durante 4 segundos (mueve la mano!)...")
+            self.update_text(f"👋 IMPORTANTE: Mueve la mano continuamente, no la dejes estática!")
         
         # Limpiar campo
         self.training_entry.delete(0, tk.END)
@@ -604,7 +606,7 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
             self.training_entry.delete(0, tk.END)
             self.training_entry.insert(0, "Ej: LETRA_A")
         else:
-            self.update_text("💡 Modo DINÁMICO: Realiza el movimiento de la seña durante 2-3 segundos")
+            self.update_text("💡 Modo DINÁMICO: Realiza el movimiento de la seña durante 4 segundos (mueve la mano!)")
             self.training_entry.delete(0, tk.END)
             self.training_entry.insert(0, "Ej: HOLA_MOVIMIENTO")
     
@@ -796,40 +798,13 @@ HOLA • GRACIAS • SÍ • NO • BIEN • MAL • AMOR • PAZ • AGUA • C
         self.update_text(f"🔊 Reproduciendo todo el historial ({len(signs)} señas)")
     
     def speak_text(self, text):
-        """Reproduce texto usando TTS (gTTS + pygame) en un hilo separado"""
+        """Reproduce texto usando SmartTTS (sin entrecortes con caché)"""
         def _speak():
-            temp_file = None
             try:
-                # Crear archivo temporal para el audio
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as fp:
-                    temp_file = fp.name
-                
-                # Generar audio con gTTS (Google Text-to-Speech)
-                tts = gTTS(text=text, lang='es', slow=False)
-                tts.save(temp_file)
-                
-                # Reproducir con pygame
-                mixer.music.load(temp_file)
-                mixer.music.play()
-                
-                # Esperar a que termine la reproducción
-                while mixer.music.get_busy():
-                    time.sleep(0.1)
-                
-                # Limpiar archivo temporal
-                if temp_file and os.path.exists(temp_file):
-                    try:
-                        os.remove(temp_file)
-                    except:
-                        pass
-                        
+                # Usar SmartTTS - primera vez genera y cachea, siguientes usa caché
+                self.tts.speak_and_play(text)
             except Exception as e:
                 self.update_text(f"❌ Error al reproducir: {e}")
-                if temp_file and os.path.exists(temp_file):
-                    try:
-                        os.remove(temp_file)
-                    except:
-                        pass
         
         # Ejecutar en hilo separado para no bloquear la UI
         tts_thread = threading.Thread(target=_speak, daemon=True)
